@@ -20,10 +20,24 @@ export default function Timesheets() {
     description: '',
   })
 
+  // Project owners cannot access timesheets
   useEffect(() => {
+    if (user?.role === 'project_owner') {
+      window.location.href = '/projects'
+    }
+  }, [user])
+
+  useEffect(() => {
+    if (user?.role === 'project_owner') {
+      return
+    }
     fetchTimesheets()
     fetchProjects()
-  }, [])
+  }, [user])
+
+  if (user?.role === 'project_owner') {
+    return null
+  }
 
   useEffect(() => {
     if (selectedProject) {
@@ -69,7 +83,7 @@ export default function Timesheets() {
       const payload = {
         ...formData,
         project_id: parseInt(formData.project_id),
-        task_id: formData.task_id ? parseInt(formData.task_id) : null,
+        task_id: parseInt(formData.task_id),  // Now mandatory
         hours: parseFloat(formData.hours),
         date: new Date(formData.date).toISOString(),
       }
@@ -102,7 +116,7 @@ export default function Timesheets() {
     }
   }
 
-  const canValidate = user?.role === 'project_manager' || user?.role === 'project_lead'
+  const canValidate = user?.role === 'project_lead'
 
   return (
     <div>
@@ -237,9 +251,10 @@ export default function Timesheets() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700">
-                  Task (Optional)
+                  Task *
                 </label>
                 <select
+                  required
                   className="mt-1 block w-full px-3 py-2 border rounded-md"
                   value={formData.task_id}
                   onChange={(e) =>
@@ -247,7 +262,7 @@ export default function Timesheets() {
                   }
                   disabled={!selectedProject}
                 >
-                  <option value="">No task</option>
+                  <option value="">Select task</option>
                   {tasks.map((t) => (
                     <option key={t.id} value={t.id}>
                       {t.title}

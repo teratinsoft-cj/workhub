@@ -14,8 +14,9 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
-    // Remove trailing slash to avoid redirects
-    if (config.url && config.url.endsWith('/') && config.url !== '/') {
+    // Keep trailing slash for POST/PUT/DELETE to root endpoints to avoid redirects
+    // Only remove trailing slash for GET requests to avoid redirect issues
+    if (config.method === 'get' && config.url && config.url.endsWith('/') && config.url !== '/') {
       config.url = config.url.slice(0, -1)
     }
     return config
@@ -33,11 +34,22 @@ api.interceptors.response.use(
   (error) => {
     if (error.response?.status === 401) {
       // Token expired or invalid
-      localStorage.removeItem('token')
-      delete api.defaults.headers.common['Authorization']
-      // Redirect to login if not already there
-      if (window.location.pathname !== '/login') {
-        window.location.href = '/login'
+      const token = localStorage.getItem('token')
+      
+      // Only redirect if we actually had a token (meaning it expired/invalid)
+      // If no token, the request might have failed for another reason
+      if (token) {
+        localStorage.removeItem('token')
+        delete api.defaults.headers.common['Authorization']
+        
+        // Only redirect if not already on login/register pages
+        const currentPath = window.location.pathname
+        if (currentPath !== '/login' && currentPath !== '/register') {
+          // Small delay to allow error messages to be shown if needed
+          setTimeout(() => {
+            window.location.href = '/login'
+          }, 100)
+        }
       }
     }
     return Promise.reject(error)

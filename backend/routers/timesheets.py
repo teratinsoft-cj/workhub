@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 from datetime import datetime
 from database import get_db
@@ -22,15 +22,14 @@ def create_timesheet(
         raise HTTPException(status_code=404, detail="Project not found")
     
     # Check access
-    if current_user.role.value not in ["project_manager", "project_lead"]:
+    if current_user.role.value != "project_lead":
         if not any(dp.developer_id == current_user.id for dp in project.developer_projects):
             raise HTTPException(status_code=403, detail="Not authorized to create timesheet for this project")
     
-    # Verify task if provided
-    if timesheet.task_id:
-        task = db.query(Task).filter(Task.id == timesheet.task_id).first()
-        if not task or task.project_id != timesheet.project_id:
-            raise HTTPException(status_code=404, detail="Task not found or not in this project")
+    # Verify task (now mandatory)
+    task = db.query(Task).filter(Task.id == timesheet.task_id).first()
+    if not task or task.project_id != timesheet.project_id:
+        raise HTTPException(status_code=404, detail="Task not found or not in this project")
     
     db_timesheet = Timesheet(
         **timesheet.dict(),
@@ -46,21 +45,29 @@ def create_timesheet(
 @router.get("/", response_model=List[TimesheetResponse])
 def get_timesheets(
     project_id: Optional[int] = None,
+    task_id: Optional[int] = None,
     status: Optional[str] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    query = db.query(Timesheet)
+    # Project owners cannot see timesheets
+    if current_user.role.value == "project_owner":
+        raise HTTPException(status_code=403, detail="Project owners cannot access timesheets")
+    
+    query = db.query(Timesheet).options(joinedload(Timesheet.user))
     
     # Filter by user if developer
     if current_user.role.value == "developer":
         query = query.filter(Timesheet.user_id == current_user.id)
-    elif current_user.role.value in ["project_manager", "project_lead"]:
+    elif current_user.role.value == "project_lead":
         # Project leads see timesheets for their projects
         query = query.join(Project).filter(Project.project_lead_id == current_user.id)
     
     if project_id:
         query = query.filter(Timesheet.project_id == project_id)
+    
+    if task_id:
+        query = query.filter(Timesheet.task_id == task_id)
     
     if status:
         query = query.filter(Timesheet.status == status)
@@ -81,7 +88,7 @@ def get_timesheet(
     # Check access
     if current_user.role.value == "developer" and timesheet.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized")
-    elif current_user.role.value in ["project_manager", "project_lead"]:
+    elif current_user.role.value == "project_lead":
         project = timesheet.project
         if project.project_lead_id != current_user.id:
             raise HTTPException(status_code=403, detail="Not authorized")
@@ -92,7 +99,7 @@ def get_timesheet(
 def validate_timesheet(
     timesheet_id: int,
     approved: bool,
-    current_user: User = Depends(require_role(["project_manager", "project_lead"])),
+    current_user: User = Depends(require_role(["project_lead"])),
     db: Session = Depends(get_db)
 ):
     timesheet = db.query(Timesheet).filter(Timesheet.id == timesheet_id).first()

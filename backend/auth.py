@@ -118,13 +118,31 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
+def has_super_admin_access(user: User) -> bool:
+    """Check if user has super admin privileges (either by role or flag)"""
+    return user.role.value == "super_admin" or user.can_act_as_super_admin
+
+def can_act_as_developer(user: User) -> bool:
+    """Check if user can act as developer (developer role, project_lead role, or flag)"""
+    return user.role.value == "developer" or user.role.value == "project_lead" or user.can_act_as_developer
+
 def require_role(allowed_roles: list):
-    def role_checker(current_user: User = Depends(get_current_active_user)):
-        if current_user.role.value not in allowed_roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Not enough permissions"
-            )
-        return current_user
+    async def role_checker(current_user: User = Depends(get_current_active_user)):
+        # Check if user has super admin privileges (either by role or flag)
+        if has_super_admin_access(current_user):
+            return current_user
+        
+        # Check if user's main role is in allowed roles
+        if current_user.role.value in allowed_roles:
+            return current_user
+        
+        # Check if developer access is needed and user can act as developer
+        if "developer" in allowed_roles and can_act_as_developer(current_user):
+            return current_user
+        
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
     return role_checker
 

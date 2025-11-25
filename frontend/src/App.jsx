@@ -11,6 +11,13 @@ import Timesheets from './pages/Timesheets'
 import Payments from './pages/Payments'
 import Earnings from './pages/Earnings'
 import UserApprovals from './pages/UserApprovals'
+import ProjectSources from './pages/ProjectSources'
+import CreateUser from './pages/CreateUser'
+import MyTasks from './pages/MyTasks'
+import TaskBilling from './pages/TaskBilling'
+import Tasks from './pages/Tasks'
+import DeveloperPayments from './pages/DeveloperPayments'
+import PaymentVouchers from './pages/PaymentVouchers'
 import Layout from './components/Layout'
 
 function PrivateRoute({ children }) {
@@ -63,6 +70,16 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/tasks"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <Tasks />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
         path="/developers"
         element={
           <PrivateRoute>
@@ -103,11 +120,71 @@ function AppRoutes() {
         }
       />
       <Route
+        path="/my-tasks"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <MyTasks />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/task-billing"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <TaskBilling />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/developer-payments"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <DeveloperPayments />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/payment-vouchers"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <PaymentVouchers />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
         path="/user-approvals"
         element={
           <PrivateRoute>
             <Layout>
               <UserApprovals />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/project-sources"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <ProjectSources />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/create-user"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <CreateUser />
             </Layout>
           </PrivateRoute>
         }

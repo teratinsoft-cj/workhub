@@ -7,8 +7,23 @@ export default function Developers() {
   const { user } = useAuth()
   const [developers, setDevelopers] = useState([])
 
+  // Helper function to check if user can view developers
+  const canViewDevelopers = () => {
+    if (!user) return false
+    // Project owners cannot view developers
+    if (user.role === 'project_owner') {
+      return false
+    }
+    // Super admin, project manager, and project lead can always view
+    if (user.role === 'super_admin' || user.role === 'project_lead') {
+      return true
+    }
+    // Pure developers cannot view
+    return false
+  }
+
   useEffect(() => {
-    if (user?.role === 'project_manager' || user?.role === 'project_lead') {
+    if (canViewDevelopers()) {
       fetchDevelopers()
     }
   }, [user])
@@ -22,7 +37,7 @@ export default function Developers() {
     }
   }
 
-  if (user?.role === 'developer') {
+  if (!canViewDevelopers()) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">You don't have access to this page</p>

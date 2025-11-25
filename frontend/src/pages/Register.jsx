@@ -92,7 +92,6 @@ export default function Register() {
               >
                 <option value="developer">Developer</option>
                 <option value="project_lead">Project Lead</option>
-                <option value="project_manager">Project Manager</option>
               </select>
             </div>
             <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
