@@ -266,7 +266,7 @@ def get_payment_vouchers(
 @router.get("/vouchers/{voucher_id}", response_model=PaymentVoucherResponse)
 def get_payment_voucher(
     voucher_id: int,
-    current_user: User = Depends(require_role(["project_lead", "super_admin"])),
+    current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """Get a specific payment voucher"""
@@ -278,7 +278,15 @@ def get_payment_voucher(
     project = voucher.project
     
     # Check access
-    if not has_super_admin_access(current_user) and project.project_lead_id != current_user.id:
+    # Developers can only access their own vouchers
+    if current_user.role.value == "developer":
+        if voucher.developer_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to access this voucher")
+    # Project leads and super admins can access vouchers for their projects
+    elif current_user.role.value in ["project_lead", "super_admin"]:
+        if not has_super_admin_access(current_user) and project.project_lead_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    else:
         raise HTTPException(status_code=403, detail="Not authorized")
     
     # Calculate total paid and status

@@ -109,17 +109,17 @@ export default function TaskBilling() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Task Billing Management</h1>
-        <p className="text-gray-600">View tasks, check billing status, and create invoices. Created invoices can be viewed and paid in the <strong>Invoices & Payments</strong> menu.</p>
+      <div className="mb-8">
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Billing</h1>
+        <p className="text-gray-600 text-lg">View tasks, check billing status, and create invoices. Created invoices can be viewed and paid in the <strong>Invoices</strong> menu.</p>
       </div>
 
       {/* Filters */}
-      <div className="card mb-6">
+      <div className="filter-bar">
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="filter-grid">
+            <div className="form-group">
+              <label className="form-label">
                 Filter by Project
               </label>
               <select
@@ -135,8 +135,8 @@ export default function TaskBilling() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <div className="form-group">
+              <label className="form-label">
                 Filter by Status
               </label>
               <select
@@ -151,8 +151,8 @@ export default function TaskBilling() {
                 <option value="completed">Completed</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <div className="form-group">
+              <label className="form-label">
                 Filter by Billing Status
               </label>
               <select
@@ -205,12 +205,12 @@ export default function TaskBilling() {
       )}
 
       {/* Tasks Table */}
-      <div className="card shadow-lg border-0 bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+      <div className="card">
+        <div className="table-wrapper">
+          <table className="table">
+            <thead className="table-header">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider w-12">
+                <th className="table-header-cell w-12">
                   <input
                     type="checkbox"
                     checked={filteredTasks.length > 0 && selectedTasks.length === filteredTasks.length && filteredTasks.every(t => selectedTasks.includes(t.id))}
@@ -218,42 +218,38 @@ export default function TaskBilling() {
                     className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Project
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Task
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Billable Hours
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Billing Status
-                </th>
+                <th className="table-header-cell">Project</th>
+                <th className="table-header-cell">Task</th>
+                <th className="table-header-cell">Description</th>
+                <th className="table-header-cell">Status</th>
+                <th className="table-header-cell">Billable Hours</th>
+                <th className="table-header-cell">Billing Status</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="table-body">
               {filteredTasks.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-6 py-12 text-center text-gray-500">
-                    No tasks found
+                  <td colSpan="7" className="table-cell text-center py-12">
+                    <div className="empty-state">
+                      <div className="empty-state-icon">
+                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                      </div>
+                      <p className="empty-state-title">No tasks found</p>
+                      <p className="empty-state-description">Try adjusting your filters</p>
+                    </div>
                   </td>
                 </tr>
               ) : (
                 filteredTasks.map((task) => (
                   <tr
                     key={task.id}
-                    className={`hover:bg-gray-50 transition-colors ${
+                    className={`table-row ${
                       selectedTasks.includes(task.id) ? 'bg-primary-50' : ''
                     }`}
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       <input
                         type="checkbox"
                         checked={selectedTasks.includes(task.id)}
@@ -261,20 +257,20 @@ export default function TaskBilling() {
                         className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
                       />
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       <div className="text-sm font-semibold text-primary-600">
                         {projects[task.project_id]?.name || `Project ${task.project_id}`}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       <div className="text-sm font-semibold text-gray-900">{task.title}</div>
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="table-cell">
                       <div className="text-sm text-gray-600 max-w-md">
                         {task.description || <span className="text-gray-400 italic">No description</span>}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       <span
                         className={`badge ${
                           task.status === 'completed'
@@ -289,14 +285,14 @@ export default function TaskBilling() {
                         {task.status?.charAt(0).toUpperCase() + task.status?.slice(1).replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       <div className="text-sm font-semibold text-primary-600">
                         {task.billable_hours !== null && task.billable_hours !== undefined
                           ? `${task.billable_hours.toFixed(2)} hrs`
                           : <span className="text-gray-400">Not set</span>}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       {task.is_paid ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">

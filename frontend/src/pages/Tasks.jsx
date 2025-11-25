@@ -97,11 +97,11 @@ export default function Tasks() {
       </div>
 
       {/* Filters */}
-      <div className="card mb-6">
+      <div className="filter-bar">
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="filter-grid">
+            <div className="form-group">
+              <label className="form-label">
                 Filter by Project
               </label>
               <select
@@ -117,8 +117,8 @@ export default function Tasks() {
                 ))}
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <div className="form-group">
+              <label className="form-label">
                 Filter by Status
               </label>
               <select
@@ -133,8 +133,8 @@ export default function Tasks() {
                 <option value="completed">Completed</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+            <div className="form-group">
+              <label className="form-label">
                 Filter by Billing Status
               </label>
               <select

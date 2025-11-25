@@ -136,90 +136,88 @@ export default function Timesheets() {
       </div>
 
       {timesheets.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">No timesheets found</p>
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <p className="empty-state-title">No timesheets found</p>
+            <p className="empty-state-description">Timesheets will appear here once created</p>
+          </div>
         </div>
       ) : (
-        <div className="bg-white shadow rounded-lg overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Date
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Project
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Task
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Hours
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                {canValidate && (
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                    Actions
-                  </th>
-                )}
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {timesheets.map((ts) => (
-                <tr key={ts.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {format(new Date(ts.date), 'MMM dd, yyyy')}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {projectsMap[ts.project_id] || `Project #${ts.project_id}`}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {ts.task?.title || 'N/A'}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {ts.hours}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {ts.user?.full_name}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span
-                      className={`px-2 py-1 rounded text-xs font-medium ${
-                        ts.status === 'approved'
-                          ? 'bg-green-100 text-green-800'
-                          : ts.status === 'rejected'
-                          ? 'bg-red-100 text-red-800'
-                          : 'bg-yellow-100 text-yellow-800'
-                      }`}
-                    >
-                      {ts.status}
-                    </span>
-                  </td>
-                  {canValidate && ts.status === 'pending' && (
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                      <button
-                        onClick={() => handleValidate(ts.id, true)}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => handleValidate(ts.id, false)}
-                        className="text-red-600 hover:text-red-900"
-                      >
-                        Reject
-                      </button>
-                    </td>
+        <div className="card">
+          <div className="table-wrapper">
+            <table className="table">
+              <thead className="table-header">
+                <tr>
+                  <th className="table-header-cell">Date</th>
+                  <th className="table-header-cell">Project</th>
+                  <th className="table-header-cell">Task</th>
+                  <th className="table-header-cell">Hours</th>
+                  <th className="table-header-cell">User</th>
+                  <th className="table-header-cell">Status</th>
+                  {canValidate && (
+                    <th className="table-header-cell">Actions</th>
                   )}
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="table-body">
+                {timesheets.map((ts) => (
+                  <tr key={ts.id} className="table-row">
+                    <td className="table-cell">
+                      {format(new Date(ts.date), 'MMM dd, yyyy')}
+                    </td>
+                    <td className="table-cell text-gray-500">
+                      {projectsMap[ts.project_id] || `Project #${ts.project_id}`}
+                    </td>
+                    <td className="table-cell text-gray-500">
+                      {ts.task?.title || 'N/A'}
+                    </td>
+                    <td className="table-cell">
+                      {ts.hours}
+                    </td>
+                    <td className="table-cell text-gray-500">
+                      {ts.user?.full_name}
+                    </td>
+                    <td className="table-cell">
+                      <span
+                        className={`badge ${
+                          ts.status === 'approved'
+                            ? 'badge-success'
+                            : ts.status === 'rejected'
+                            ? 'badge-danger'
+                            : 'badge-warning'
+                        }`}
+                      >
+                        {ts.status}
+                      </span>
+                    </td>
+                    {canValidate && ts.status === 'pending' && (
+                      <td className="table-cell">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => handleValidate(ts.id, true)}
+                            className="btn btn-success text-sm py-1 px-3"
+                          >
+                            Approve
+                          </button>
+                          <button
+                            onClick={() => handleValidate(ts.id, false)}
+                            className="btn btn-danger text-sm py-1 px-3"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

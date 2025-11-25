@@ -228,11 +228,11 @@ export default function DeveloperPayments() {
       </div>
 
       {/* Filters */}
-      <div className="card mb-6">
+      <div className="filter-bar">
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+          <div className="filter-grid">
+            <div className="form-group">
+              <label className="form-label">
                 Filter by Project
               </label>
               <select

@@ -280,49 +280,58 @@ export default function Payments() {
 
   return (
     <div>
+      {/* Header */}
       <div className="mb-8">
-        <div className="flex justify-between items-center mb-4">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">Invoices & Payments</h1>
-            <p className="mt-2 text-sm text-gray-600">
-              {user?.role === 'project_owner' 
-                ? 'View invoices and make payments against them'
-                : user?.role === 'project_lead'
-                ? 'View invoices you created. Project owners can make payments here.'
-                : 'View all invoices and payment history'
-              }
-            </p>
-            {user?.role === 'project_lead' && (
-              <p className="mt-1 text-xs text-blue-600">
-                💡 To create a new invoice, go to <strong>Task Billing</strong> menu
-              </p>
-            )}
-          </div>
-        </div>
+        <h1 className="text-4xl font-bold text-gray-900 mb-2">Invoices</h1>
+        <p className="text-gray-600 text-lg">
+          {user?.role === 'project_owner' 
+            ? 'View invoices and make payments against them'
+            : user?.role === 'project_lead'
+            ? 'View invoices you created. Project owners can make payments here.'
+            : 'View all invoices and payment history'
+          }
+        </p>
+        {user?.role === 'project_lead' && (
+          <p className="mt-2 text-sm text-blue-600">
+            💡 To create a new invoice, go to <strong>Billing</strong> menu
+          </p>
+        )}
+      </div>
         
-        {/* Status Filter */}
-        <div className="flex items-center space-x-2 mb-4">
-          <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          >
-            <option value="pending">Pending</option>
-            <option value="partial">Partial</option>
-            <option value="paid">Paid</option>
-            <option value="all">All</option>
-          </select>
-        </div>
+      {/* Status Filter */}
+      <div className="flex items-center space-x-2 mb-6">
+        <label className="text-sm font-medium text-gray-700">Filter by Status:</label>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+        >
+          <option value="pending">Pending</option>
+          <option value="partial">Partial</option>
+          <option value="paid">Paid</option>
+          <option value="all">All</option>
+        </select>
       </div>
 
       {filteredInvoices.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-gray-500">
-            {invoices.length === 0 
-              ? 'No invoices found' 
-              : `No ${statusFilter === 'all' ? '' : statusFilter} invoices found`}
-          </p>
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+            </div>
+            <p className="empty-state-title">
+              {invoices.length === 0 
+                ? 'No invoices found' 
+                : `No ${statusFilter === 'all' ? '' : statusFilter} invoices found`}
+            </p>
+            <p className="empty-state-description">
+              {invoices.length === 0 
+                ? 'Invoices will appear here once created' 
+                : 'Try selecting a different status filter'}
+            </p>
+          </div>
         </div>
       ) : (
         <div className="space-y-4">
@@ -333,8 +342,8 @@ export default function Payments() {
             const isExpanded = expandedInvoices.has(invoice.id)
 
             return (
-              <div key={invoice.id} className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="p-6">
+              <div key={invoice.id} className="card overflow-hidden">
+                <div className="card-body">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center space-x-4 mb-4">

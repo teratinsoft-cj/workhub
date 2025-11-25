@@ -217,79 +217,100 @@ export default function Projects() {
 
       {/* Projects Grid */}
       {projects.length === 0 ? (
-        <div className="card text-center py-16">
-          <div className="flex flex-col items-center">
-            <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+        <div className="card">
+          <div className="empty-state">
+            <div className="empty-state-icon">
               <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
               </svg>
             </div>
-            <p className="text-gray-500 text-lg font-medium mb-1">No projects found</p>
-            <p className="text-gray-400 text-sm">Get started by creating your first project</p>
+            <p className="empty-state-title">No projects found</p>
+            <p className="empty-state-description">Get started by creating your first project</p>
           </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <div
-              key={project.id}
-              className="card group hover:shadow-medium transition-all duration-300"
-            >
-              <div className="card-body">
-                <div className="flex justify-between items-start mb-4">
-                  <Link
-                    to={`/projects/${project.id}`}
-                    className="flex-1 group-hover:text-primary-600 transition-colors"
-                  >
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 line-clamp-1">
-                      {project.name}
-                    </h3>
-                  </Link>
-                  {canEdit(project) && (
-                    <div className="flex space-x-1 ml-2">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          handleEdit(project)
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                        title="Edit project"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault()
-                          handleDelete(project.id)
-                        }}
-                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                        title="Delete project"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
+          {projects.map((project) => {
+            const statusColor = 
+              project.status === 'ACTIVE' || project.status === 'active' ? 'from-green-500 to-emerald-600' :
+              project.status === 'OPEN' || project.status === 'open' ? 'from-blue-500 to-indigo-600' :
+              project.status === 'HOLD' || project.status === 'hold' ? 'from-yellow-500 to-amber-600' :
+              'from-gray-500 to-gray-600'
+            
+            return (
+              <div
+                key={project.id}
+                className="card group hover:shadow-lg hover:-translate-y-1 transition-all duration-300 overflow-hidden relative"
+              >
+                {/* Status Indicator Bar */}
+                <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${statusColor}`}></div>
                 
-                <Link to={`/projects/${project.id}`}>
-                  <p className="text-sm text-gray-600 mb-4 line-clamp-2 min-h-[2.5rem]">
-                    {project.description || 'No description provided'}
-                  </p>
-                  
-                  <div className="space-y-3 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      {project.project_source && (
-                        <div className="flex items-center text-xs text-gray-500">
-                          <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                <div className="card-body pt-5">
+                  {/* Header Section */}
+                  <div className="flex justify-between items-start mb-4">
+                    <Link
+                      to={`/projects/${project.id}`}
+                      className="flex-1 group-hover:text-primary-600 transition-colors"
+                    >
+                      <div className="flex items-start space-x-3">
+                        <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${statusColor} flex items-center justify-center shadow-md group-hover:scale-110 transition-transform`}>
+                          <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                           </svg>
-                          {project.project_source.name}
                         </div>
-                      )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-xl font-bold text-gray-900 mb-1 line-clamp-1 group-hover:text-primary-600 transition-colors">
+                            {project.name}
+                          </h3>
+                          {project.project_source && (
+                            <div className="flex items-center text-xs text-gray-500 mt-1">
+                              <svg className="w-3.5 h-3.5 mr-1.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                              </svg>
+                              <span className="truncate">{project.project_source.name}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Link>
+                    {canEdit(project) && (
+                      <div className="flex space-x-1 ml-2 flex-shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleEdit(project)
+                          }}
+                          className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200 hover:scale-110"
+                          title="Edit project"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault()
+                            handleDelete(project.id)
+                          }}
+                          className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200 hover:scale-110"
+                          title="Delete project"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                  
+                  <Link to={`/projects/${project.id}`}>
+                    {/* Description */}
+                    <p className="text-sm text-gray-600 mb-5 line-clamp-2 min-h-[2.5rem] leading-relaxed">
+                      {project.description || <span className="text-gray-400 italic">No description provided</span>}
+                    </p>
+                    
+                    {/* Status Badge */}
+                    <div className="mb-4">
                       <span
                         className={`badge ${
                           project.status === 'ACTIVE' || project.status === 'active'
@@ -306,27 +327,47 @@ export default function Projects() {
                         {project.status?.charAt(0).toUpperCase() + project.status?.slice(1).toLowerCase()}
                       </span>
                     </div>
-                    <div className="flex items-center text-xs text-gray-500 space-x-3">
-                      <div className="flex items-center">
-                        <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        {new Date(project.start_date).toLocaleDateString()}
-                      </div>
-                      {project.deadline && (
-                        <div className="flex items-center">
-                          <svg className="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    
+                    {/* Footer Info */}
+                    <div className="pt-4 border-t border-gray-100 space-y-2.5">
+                      <div className="grid grid-cols-2 gap-3 text-xs">
+                        <div className="flex items-center text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+                          <svg className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                          {new Date(project.deadline).toLocaleDateString()}
+                          <div className="min-w-0">
+                            <div className="text-gray-400 text-[10px] uppercase tracking-wide">Start</div>
+                            <div className="font-semibold text-gray-700 truncate">{new Date(project.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                          </div>
                         </div>
-                      )}
+                        {project.deadline && (
+                          <div className="flex items-center text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
+                            <svg className="w-4 h-4 mr-2 text-gray-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <div className="min-w-0">
+                              <div className="text-gray-400 text-[10px] uppercase tracking-wide">Deadline</div>
+                              <div className="font-semibold text-gray-700 truncate">{new Date(project.deadline).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* View Project Link */}
+                      <div className="flex items-center justify-between pt-2">
+                        <span className="text-xs font-semibold text-primary-600 group-hover:text-primary-700 flex items-center">
+                          View Details
+                          <svg className="w-3.5 h-3.5 ml-1 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </Link>
+                  </Link>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
 
@@ -350,9 +391,9 @@ export default function Projects() {
             </div>
             <div className="card-body">
               <form onSubmit={handleSubmit} className="space-y-5">
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Project Name *
+                <div className="form-group">
+                  <label className="form-label form-label-required">
+                    Project Name
                   </label>
                   <input
                     type="text"
@@ -365,8 +406,8 @@ export default function Projects() {
                     placeholder="Enter project name"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <div className="form-group">
+                  <label className="form-label">
                     Project Source
                   </label>
                   <select
@@ -386,8 +427,8 @@ export default function Projects() {
                 </div>
                 {user?.role === 'super_admin' && (
                   <>
-                    <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <div className="form-group">
+                      <label className="form-label">
                         Project Lead
                       </label>
                       <select
