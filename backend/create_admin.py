@@ -26,6 +26,7 @@ sys.path.insert(0, str(backend_dir))
 
 # Import backend modules
 from sqlalchemy.orm import Session
+from sqlalchemy import text
 from database import SessionLocal, engine, DATABASE_URL
 from models import User, UserRole
 from auth import get_password_hash
@@ -70,9 +71,14 @@ def create_super_admin(username: str, email: str, full_name: str, password: str)
             return False
         
         # Check if super admin already exists
-        # For PostgreSQL, we need to use the enum value string directly
-        existing_super_admin = db.query(User).filter(User.role == "super_admin").first()
-        if existing_super_admin:
+        # Use raw SQL to bypass SQLAlchemy's enum name conversion issue
+        result = db.execute(
+            text("SELECT id FROM users WHERE role = :role LIMIT 1"),
+            {"role": "super_admin"}
+        ).first()
+        
+        if result:
+            existing_super_admin = db.query(User).get(result[0])
             print(f"⚠️  Warning: A super admin already exists (username: {existing_super_admin.username}, email: {existing_super_admin.email})")
             response = input("Do you want to create another super admin? (yes/no): ").strip().lower()
             if response not in ['yes', 'y']:
@@ -88,22 +94,33 @@ def create_super_admin(username: str, email: str, full_name: str, password: str)
                 return False
         
         # Create super admin
+        # Use raw SQL to insert user with enum value directly (bypasses SQLAlchemy enum conversion)
         hashed_password = get_password_hash(password)
-        super_admin = User(
-            email=email,
-            username=username,
-            hashed_password=hashed_password,
-            full_name=full_name,
-            role=UserRole.SUPER_ADMIN,
-            is_active=True,
-            is_approved=True,  # Super admins are auto-approved
-            can_act_as_developer=False,
-            can_act_as_super_admin=False
-        )
         
-        db.add(super_admin)
+        # Insert using raw SQL to avoid enum name conversion issue
+        result = db.execute(
+            text("""
+                INSERT INTO users (email, username, hashed_password, full_name, role, is_active, is_approved, can_act_as_developer, can_act_as_super_admin)
+                VALUES (:email, :username, :hashed_password, :full_name, :role, :is_active, :is_approved, :can_act_as_developer, :can_act_as_super_admin)
+                RETURNING id, created_at
+            """),
+            {
+                "email": email,
+                "username": username,
+                "hashed_password": hashed_password,
+                "full_name": full_name,
+                "role": "super_admin",  # Use enum value directly
+                "is_active": True,
+                "is_approved": True,
+                "can_act_as_developer": False,
+                "can_act_as_super_admin": False
+            }
+        )
         db.commit()
-        db.refresh(super_admin)
+        
+        # Get the created user
+        user_id = result.fetchone()[0]
+        super_admin = db.query(User).get(user_id)
         
         print("\n" + "=" * 60)
         print("✅ Super Admin created successfully!")

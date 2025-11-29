@@ -1,8 +1,23 @@
 from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Boolean, Text, Enum as SQLEnum, Numeric
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-from database import Base
+from database import Base, DATABASE_URL
 import enum
+
+# Helper function to create enum column that works with PostgreSQL native enums
+def create_enum_column(enum_class, default=None):
+    """Create an enum column that properly handles PostgreSQL native enums by using values"""
+    if DATABASE_URL.startswith("postgresql"):
+        # For PostgreSQL, use native_enum=False to use enum values instead of names
+        # PostgreSQL will automatically cast strings to enum types
+        return Column(
+            SQLEnum(enum_class, native_enum=False, values_callable=lambda x: [e.value for e in x]),
+            nullable=False if default is None else True,
+            default=default
+        )
+    else:
+        # For SQLite, use standard Enum
+        return Column(SQLEnum(enum_class), nullable=False if default is None else True, default=default)
 
 class UserRole(str, enum.Enum):
     SUPER_ADMIN = "super_admin"
@@ -34,7 +49,7 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=False)
-    role = Column(SQLEnum(UserRole), nullable=False)
+    role = create_enum_column(UserRole)
     is_active = Column(Boolean, default=True)
     is_approved = Column(Boolean, default=False)  # Super admin must approve users
     can_act_as_developer = Column(Boolean, default=False)  # Can act as developer in addition to main role
@@ -73,7 +88,7 @@ class Project(Base):
     project_source_id = Column(Integer, ForeignKey("project_sources.id"), nullable=True)
     start_date = Column(DateTime(timezone=True), nullable=False)  # Stored as DateTime but used as Date only
     deadline = Column(DateTime(timezone=True), nullable=True)  # Stored as DateTime but used as Date only
-    status = Column(SQLEnum(ProjectStatus), default=ProjectStatus.OPEN)
+    status = create_enum_column(ProjectStatus, default=ProjectStatus.OPEN)
     hold_reason = Column(Text, nullable=True)  # Reason when status is HOLD
     rate_per_hour = Column(Numeric(10, 2), nullable=True)  # Rate per hour set by project lead (in currency units)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -144,7 +159,7 @@ class Timesheet(Base):
     date = Column(DateTime(timezone=True), nullable=False)
     hours = Column(Float, nullable=False)
     description = Column(Text)
-    status = Column(SQLEnum(TimesheetStatus), default=TimesheetStatus.PENDING)
+    status = create_enum_column(TimesheetStatus, default=TimesheetStatus.PENDING)
     validated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
     validated_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -217,6 +232,7 @@ class PaymentVoucher(Base):
     date_range_end = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)  # Project lead who created the voucher
+    status = create_enum_column(PaymentStatus, default=PaymentStatus.PENDING)  # pending, paid, partial
     
     # Relationships
     developer = relationship("User", foreign_keys=[developer_id])
