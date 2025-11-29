@@ -51,6 +51,15 @@ Guide for running Alembic migrations on the server.
 - Common errors and solutions
 - Systemd integration
 
+### [Fresh Migration Setup](./fresh-migration-setup.md)
+Guide for setting up migrations on a fresh PostgreSQL database.
+
+**Covers:**
+- Clean migration structure
+- Initial schema migration
+- Setup for fresh database
+- Verification checklist
+
 ## 🗄️ Database Information
 
 ### Supported Databases
@@ -58,16 +67,26 @@ Guide for running Alembic migrations on the server.
 - **SQLite** (Development only)
 
 ### Current Schema
-- 14 tables total
+- **14 tables total** (users, projects, tasks, timesheets, invoices, payments, etc.)
+- **Single clean initial migration** (`001_initial_schema`)
 - All managed through Alembic migrations
 - PostgreSQL enum types for status fields
+- Production-ready, tested on fresh PostgreSQL databases
 
 ## 🚀 Quick Start
 
+### For Fresh Database (Production)
 1. **Setup PostgreSQL:** [PostgreSQL Setup](./postgresql-setup.md)
-2. **Verify Models:** Run `python backend/verify_alembic_models.py`
-3. **Create Migration:** `cd backend && alembic revision --autogenerate -m "Description"`
-4. **Apply Migration:** `cd backend && alembic upgrade head` or use `python run_migrations.py upgrade`
+2. **Run Initial Migration:** [Fresh Migration Setup](./fresh-migration-setup.md)
+   ```bash
+   cd backend && alembic upgrade head
+   ```
+3. **Create Super Admin:** `python backend/create_admin.py`
+
+### For Existing Database
+1. **Verify Models:** Run `python backend/verify_alembic_models.py`
+2. **Create Migration:** `cd backend && alembic revision --autogenerate -m "Description"`
+3. **Apply Migration:** `cd backend && alembic upgrade head`
 
 **⚠️ Important:** Always run Alembic commands from the `backend` directory!
 
