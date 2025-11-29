@@ -70,7 +70,8 @@ def create_super_admin(username: str, email: str, full_name: str, password: str)
             return False
         
         # Check if super admin already exists
-        existing_super_admin = db.query(User).filter(User.role == UserRole.SUPER_ADMIN).first()
+        # For PostgreSQL, we need to use the enum value string directly
+        existing_super_admin = db.query(User).filter(User.role == "super_admin").first()
         if existing_super_admin:
             print(f"⚠️  Warning: A super admin already exists (username: {existing_super_admin.username}, email: {existing_super_admin.email})")
             response = input("Do you want to create another super admin? (yes/no): ").strip().lower()
