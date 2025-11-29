@@ -37,7 +37,7 @@ if db_url.startswith("sqlite:///./"):
     db_url = f"sqlite:///{db_path}"
 
 # Set the database URL for Alembic
-config.set_main_option("sqlalchemy.url", db_url)
+config.set_main_option("sqlalchemy.url", db_url.replace("%", "%%"))
 
 # For PostgreSQL, ensure we're using the correct dialect
 if db_url.startswith("postgresql"):
