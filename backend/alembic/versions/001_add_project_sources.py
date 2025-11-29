@@ -17,38 +17,65 @@ depends_on = None
 
 
 def upgrade():
-    # Create project_sources table
-    op.create_table(
-        'project_sources',
-        sa.Column('id', sa.Integer(), nullable=False),
-        sa.Column('name', sa.String(), nullable=False),
-        sa.Column('contact_no', sa.String(), nullable=True),
-        sa.Column('email', sa.String(), nullable=True),
-        sa.Column('address', sa.Text(), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
-        sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
-        sa.PrimaryKeyConstraint('id'),
-        sa.UniqueConstraint('name')
-    )
-    op.create_index(op.f('ix_project_sources_id'), 'project_sources', ['id'], unique=False)
+    # Check if we're using PostgreSQL
+    bind = op.get_bind()
+    is_postgresql = bind.dialect.name == 'postgresql'
     
-    # Add project_source_id to projects table
-    # SQLite requires special handling for adding columns
-    try:
-        op.add_column('projects', sa.Column('project_source_id', sa.Integer(), nullable=True))
-    except Exception:
-        # Column might already exist
-        pass
+    # Check what tables exist
+    from sqlalchemy import inspect
+    inspector = inspect(bind)
+    existing_tables = inspector.get_table_names()
     
-    # Create foreign key (SQLite has limited FK support, but we'll try)
-    try:
-        op.create_foreign_key('fk_projects_project_source_id', 'projects', 'project_sources', ['project_source_id'], ['id'])
-    except Exception:
-        # Foreign key might not be supported or already exists
-        pass
+    # Create project_sources table (only if it doesn't exist)
+    if 'project_sources' not in existing_tables:
+        # Use proper PostgreSQL syntax for timestamp
+        if is_postgresql:
+            created_at_default = sa.text('CURRENT_TIMESTAMP')
+        else:
+            created_at_default = sa.text('(CURRENT_TIMESTAMP)')
+        
+        op.create_table(
+            'project_sources',
+            sa.Column('id', sa.Integer(), nullable=False),
+            sa.Column('name', sa.String(), nullable=False),
+            sa.Column('contact_no', sa.String(), nullable=True),
+            sa.Column('email', sa.String(), nullable=True),
+            sa.Column('address', sa.Text(), nullable=True),
+            sa.Column('created_at', sa.DateTime(timezone=True), server_default=created_at_default, nullable=True),
+            sa.Column('updated_at', sa.DateTime(timezone=True), nullable=True),
+            sa.PrimaryKeyConstraint('id'),
+            sa.UniqueConstraint('name')
+        )
+        op.create_index(op.f('ix_project_sources_id'), 'project_sources', ['id'], unique=False)
     
-    # Note: Removing startup_company column requires recreating the table in SQLite
-    # We'll leave it for now and handle it in application code
+    # Add project_source_id to projects table (only if projects table exists)
+    # This handles upgrade scenarios where projects table already exists
+    if 'projects' in existing_tables:
+        # Check if column already exists
+        projects_columns = [col['name'] for col in inspector.get_columns('projects')]
+        
+        if 'project_source_id' not in projects_columns:
+            op.add_column('projects', sa.Column('project_source_id', sa.Integer(), nullable=True))
+        
+        # Create foreign key if it doesn't exist
+        fk_exists = False
+        try:
+            fks = inspector.get_foreign_keys('projects')
+            for fk in fks:
+                if 'project_source_id' in fk.get('constrained_columns', []):
+                    fk_exists = True
+                    break
+        except Exception:
+            pass
+        
+        if not fk_exists:
+            op.create_foreign_key(
+                'fk_projects_project_source_id',
+                'projects',
+                'project_sources',
+                ['project_source_id'],
+                ['id']
+            )
 
 
 def downgrade():

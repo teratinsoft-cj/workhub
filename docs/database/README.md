@@ -42,6 +42,15 @@ Overview of database migration changes and setup.
 - Next steps
 - Verification checklist
 
+### [Running Migrations](./running-migrations.md)
+Guide for running Alembic migrations on the server.
+
+**Covers:**
+- Correct working directory
+- Different methods to run migrations
+- Common errors and solutions
+- Systemd integration
+
 ## 🗄️ Database Information
 
 ### Supported Databases
@@ -57,8 +66,10 @@ Overview of database migration changes and setup.
 
 1. **Setup PostgreSQL:** [PostgreSQL Setup](./postgresql-setup.md)
 2. **Verify Models:** Run `python backend/verify_alembic_models.py`
-3. **Create Migration:** `alembic revision --autogenerate -m "Description"`
-4. **Apply Migration:** `alembic upgrade head`
+3. **Create Migration:** `cd backend && alembic revision --autogenerate -m "Description"`
+4. **Apply Migration:** `cd backend && alembic upgrade head` or use `python run_migrations.py upgrade`
+
+**⚠️ Important:** Always run Alembic commands from the `backend` directory!
 
 ## 📋 Migration Workflow
 
