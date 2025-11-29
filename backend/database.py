@@ -6,13 +6,25 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Database URL - using SQLite for simplicity, can be changed to PostgreSQL
+# Database URL - PostgreSQL for production, SQLite for development
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./workhub.db")
 
-engine = create_engine(
-    DATABASE_URL,
-    connect_args={"check_same_thread": False} if "sqlite" in DATABASE_URL else {}
-)
+# Configure engine based on database type
+if DATABASE_URL.startswith("postgresql"):
+    # PostgreSQL configuration
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,  # Verify connections before using
+        pool_size=10,  # Connection pool size
+        max_overflow=20,  # Maximum overflow connections
+        echo=False  # Set to True for SQL query logging in development
+    )
+else:
+    # SQLite configuration (development only)
+    engine = create_engine(
+        DATABASE_URL,
+        connect_args={"check_same_thread": False}
+    )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

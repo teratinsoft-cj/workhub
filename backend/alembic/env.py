@@ -26,17 +26,24 @@ if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
 # Set the sqlalchemy.url from our database configuration
-# For SQLite, ensure the path is relative to the backend directory
 db_url = DATABASE_URL
+
+# Handle SQLite path conversion (for development)
 if db_url.startswith("sqlite:///./"):
     # Make path relative to backend directory
-    import os
     backend_dir = Path(__file__).resolve().parent.parent
     db_file = db_url.replace("sqlite:///./", "")
     db_path = backend_dir / db_file
     db_url = f"sqlite:///{db_path}"
-    
+
+# Set the database URL for Alembic
 config.set_main_option("sqlalchemy.url", db_url)
+
+# For PostgreSQL, ensure we're using the correct dialect
+if db_url.startswith("postgresql"):
+    # PostgreSQL-specific configuration
+    # Alembic will automatically detect PostgreSQL from the URL
+    pass
 
 # add your model's MetaData object here
 # for 'autogenerate' support

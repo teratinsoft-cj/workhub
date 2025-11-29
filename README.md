@@ -31,6 +31,15 @@ A comprehensive project management platform for managing projects, developers, t
 - Axios
 - React Hot Toast
 
+## 📚 Documentation
+
+All documentation is organized in the `docs/` directory:
+
+- **[Deployment Guide](docs/deployment/guide.md)** - Production deployment instructions
+- **[Database Setup](docs/database/postgresql-setup.md)** - PostgreSQL configuration
+- **[Development Guide](docs/development/quickstart.md)** - Getting started
+- **[Full Documentation Index](docs/README.md)** - Complete documentation structure
+
 ## Project Structure
 
 ```
@@ -48,6 +57,11 @@ workhub/
 │   ├── run_migrations.py    # Migration helper script
 │   └── routers/             # API route handlers
 │       ├── auth.py
+├── docs/                    # Documentation (industry standard)
+│   ├── deployment/          # Deployment guides
+│   ├── database/            # Database documentation
+│   ├── production/          # Production guides
+│   └── development/         # Development guides
 │       ├── projects.py
 │       ├── developers.py
 │       ├── tasks.py

@@ -11,16 +11,26 @@ from models import Base
 from routers import auth, projects, developers, tasks, timesheets, payments, project_sources, developer_payments
 
 # Database migrations are handled by Alembic
-# Run migrations with: python run_migrations.py upgrade
-# Create new migrations with: python run_migrations.py create --message "description"
+# Run migrations with: alembic upgrade head
+# Or use: python run_migrations.py upgrade
+# Create new migrations with: alembic revision --autogenerate -m "description"
 # 
-# For development only: create_all is kept as a fallback
-# Set USE_ALEMBIC=True in environment to disable create_all and use only migrations
+# For development only: create_all is kept as a fallback for SQLite
+# In production with PostgreSQL, ALWAYS use Alembic migrations
 use_alembic = os.getenv("USE_ALEMBIC", "False").lower() == "true"
-if not use_alembic:
-    # Development fallback - creates tables if they don't exist
+is_postgresql = os.getenv("DATABASE_URL", "").startswith("postgresql")
+
+# In production with PostgreSQL, always use Alembic
+# For development with SQLite, allow create_all as fallback
+if not use_alembic and not is_postgresql:
+    # Development fallback for SQLite only - creates tables if they don't exist
     # In production, always use Alembic migrations
     Base.metadata.create_all(bind=engine)
+elif is_postgresql and not use_alembic:
+    # PostgreSQL detected but USE_ALEMBIC not set - warn but don't create
+    print("WARNING: PostgreSQL detected but USE_ALEMBIC not set to True.")
+    print("Please run: alembic upgrade head")
+    print("Or set USE_ALEMBIC=True in .env")
 
 # Create uploads directory if it doesn't exist
 os.makedirs("uploads/payments", exist_ok=True)
@@ -33,10 +43,14 @@ app = FastAPI(
 # Serve static files for payment evidence
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
-# CORS middleware
+# CORS middleware - configure via environment variable
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
+# Split comma-separated origins and strip whitespace
+allow_origins = [origin.strip() for origin in cors_origins.split(",") if origin.strip()]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173"],
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -60,6 +74,15 @@ def root():
 def health_check():
     return {"status": "healthy"}
 
+# Production: Use systemd service or gunicorn
+# Development only: Run with uvicorn directly
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
+    import sys
+    # Only allow direct running in development
+    if os.getenv("DEBUG", "False").lower() == "true":
+        uvicorn.run("main:app", host="127.0.0.1", port=8000, reload=True)
+    else:
+        print("For production, use: uvicorn main:app --host 127.0.0.1 --port 8000")
+        print("Or use the systemd service: systemctl start workhub-backend")
+        sys.exit(1)
 
