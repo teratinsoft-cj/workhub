@@ -537,6 +537,7 @@ export default function UserApprovals() {
                     >
                     <option value="developer">Developer</option>
                     <option value="project_lead">Project Lead</option>
+                    <option value="project_owner">Project Owner</option>
                   </select>
                   <p className="mt-1 text-xs text-gray-500">
                     Note: Super Admin role cannot be created through this interface. Any role can be assigned to users.

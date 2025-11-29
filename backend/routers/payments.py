@@ -8,7 +8,7 @@ import shutil
 from database import get_db
 from models import User, Invoice, Payment, Project, InvoiceTask, Task, DeveloperPayment, DeveloperProject, TaskDeveloper, PaymentVoucher, PaymentVoucherTask
 from schemas import InvoiceCreate, InvoiceResponse, PaymentCreate, PaymentResponse, DeveloperEarnings, PaymentHistoryItem
-from auth import get_current_active_user, require_role
+from auth import get_current_active_user, require_role, can_act_as_developer
 
 router = APIRouter()
 
@@ -330,8 +330,8 @@ def get_developer_earnings(
     db: Session = Depends(get_db)
 ):
     """Get developer earnings based on payment vouchers"""
-    # Only developers can access this endpoint
-    if current_user.role.value != "developer":
+    # Only users who can act as developers (developers or project leads) can access this endpoint
+    if not can_act_as_developer(current_user):
         raise HTTPException(status_code=403, detail="Only developers can access this endpoint")
     
     # Get all payment vouchers for this developer

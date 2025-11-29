@@ -415,7 +415,8 @@ export default function Earnings() {
     `
   }
 
-  if (user?.role !== 'developer') {
+  // Allow developers and project leads (who can also act as developers)
+  if (user?.role !== 'developer' && user?.role !== 'project_lead') {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">You don't have access to this page</p>

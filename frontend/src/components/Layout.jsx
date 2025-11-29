@@ -8,12 +8,14 @@ export default function Layout({ children }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [developerMenuOpen, setDeveloperMenuOpen] = useState(false)
   const [administrationMenuOpen, setAdministrationMenuOpen] = useState(false)
+  const [financeMenuOpen, setFinanceMenuOpen] = useState(false)
   const developerMenuRef = useRef(null)
   const administrationMenuRef = useRef(null)
+  const financeMenuRef = useRef(null)
 
   const isActive = (path) => location.pathname === path
 
-  // Close developer dropdown when clicking outside
+  // Close dropdowns when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (developerMenuRef.current && !developerMenuRef.current.contains(event.target)) {
@@ -22,19 +24,23 @@ export default function Layout({ children }) {
       if (administrationMenuRef.current && !administrationMenuRef.current.contains(event.target)) {
         setAdministrationMenuOpen(false)
       }
+      if (financeMenuRef.current && !financeMenuRef.current.contains(event.target)) {
+        setFinanceMenuOpen(false)
+      }
     }
-    if (developerMenuOpen || administrationMenuOpen) {
+    if (developerMenuOpen || administrationMenuOpen || financeMenuOpen) {
       document.addEventListener('mousedown', handleClickOutside)
     }
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [developerMenuOpen, administrationMenuOpen])
+  }, [developerMenuOpen, administrationMenuOpen, financeMenuOpen])
 
   const navItems = []
   const primaryItems = []
   const developerMenuItems = []
   const administrationMenuItems = []
+  const financeMenuItems = []
   
   // For developers, show different menu
   if (user?.role === 'developer') {
@@ -57,6 +63,12 @@ export default function Layout({ children }) {
       primaryItems.push({ path: '/tasks', label: 'Tasks', icon: '✅' })
     }
     
+    // My Tasks and My Earnings - for project leads (they also develop)
+    if (user?.role === 'project_lead') {
+      primaryItems.push({ path: '/my-tasks', label: 'My Tasks', icon: '✅' })
+      primaryItems.push({ path: '/earnings', label: 'My Earnings', icon: '💵' })
+    }
+    
     // Developer menu items - grouped under Developer dropdown
     // Show Developer List for all non-project-owner roles (project_lead, super_admin)
     if (user?.role === 'project_lead' || user?.role === 'super_admin') {
@@ -70,14 +82,14 @@ export default function Layout({ children }) {
       primaryItems.push({ path: '/timesheets', label: 'Timesheets', icon: '⏰' })
     }
     
+    // Finance menu items - Billing and Invoices
     // Billing - only for project leads and super admins (creates invoices from tasks)
     if (user?.role === 'project_lead' || user?.role === 'super_admin') {
-      primaryItems.push({ path: '/task-billing', label: 'Billing', icon: '📋' })
+      financeMenuItems.push({ path: '/task-billing', label: 'Billing', icon: '📋' })
     }
     
-    primaryItems.push(
-      { path: '/payments', label: 'Invoices', icon: '💰' }
-    )
+    // Invoices - visible to all non-developer roles
+    financeMenuItems.push({ path: '/payments', label: 'Invoices', icon: '💰' })
 
     // Super admin can see users and project sources under Administration menu
     if (user?.role === 'super_admin') {
@@ -85,11 +97,14 @@ export default function Layout({ children }) {
       administrationMenuItems.push({ path: '/project-sources', label: 'Project Sources', icon: '🏢' })
     }
 
-    navItems.push(...primaryItems, ...developerMenuItems, ...administrationMenuItems)
+    navItems.push(...primaryItems, ...developerMenuItems, ...financeMenuItems, ...administrationMenuItems)
   }
 
   // Check if any developer menu item is active
   const isDeveloperMenuActive = developerMenuItems.length > 0 && developerMenuItems.some(item => isActive(item.path))
+  
+  // Check if any finance menu item is active
+  const isFinanceMenuActive = financeMenuItems.length > 0 && financeMenuItems.some(item => isActive(item.path))
   
   // Check if any administration menu item is active
   const isAdministrationMenuActive = administrationMenuItems.length > 0 && administrationMenuItems.some(item => isActive(item.path))
@@ -188,6 +203,67 @@ export default function Layout({ children }) {
                     </div>
                   )}
                   
+                  {/* Finance Menu Dropdown */}
+                  {financeMenuItems.length > 0 && (
+                    <div className="relative" ref={financeMenuRef}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                          setFinanceMenuOpen(!financeMenuOpen)
+                          setDeveloperMenuOpen(false)
+                          setAdministrationMenuOpen(false)
+                        }}
+                        className={`inline-flex items-center px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 ${
+                          isFinanceMenuActive
+                            ? 'bg-primary-50 text-primary-700'
+                            : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                        }`}
+                      >
+                        <span className="mr-1.5 text-base">💼</span>
+                        <span className="hidden xl:inline">Finance</span>
+                        <svg 
+                          className={`ml-1 h-4 w-4 transition-transform ${financeMenuOpen ? 'rotate-180' : ''}`}
+                          fill="none" 
+                          stroke="currentColor" 
+                          viewBox="0 0 24 24"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      
+                      {financeMenuOpen && financeMenuItems.length > 0 && (
+                        <div 
+                          className="absolute left-0 top-full mt-1 w-56 rounded-md shadow-xl bg-white ring-1 ring-black ring-opacity-5 focus:outline-none z-[100] border border-gray-200"
+                          style={{ minWidth: '14rem' }}
+                        >
+                          <div className="py-1">
+                            {financeMenuItems.map((item) => (
+                              <Link
+                                key={item.path}
+                                to={item.path}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setFinanceMenuOpen(false)
+                                  setMobileMenuOpen(false)
+                                }}
+                                className={`flex items-center px-4 py-2.5 text-sm transition-colors ${
+                                  isActive(item.path)
+                                    ? 'bg-primary-50 text-primary-700 font-medium'
+                                    : 'text-gray-700 hover:bg-gray-100'
+                                }`}
+                              >
+                                <span className="mr-3 text-lg">{item.icon}</span>
+                                <span>{item.label}</span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
                   {/* Administration Menu Dropdown */}
                   {administrationMenuItems.length > 0 && (
                     <div className="relative" ref={administrationMenuRef}>
@@ -198,6 +274,7 @@ export default function Layout({ children }) {
                           e.stopPropagation()
                           setAdministrationMenuOpen(!administrationMenuOpen)
                           setDeveloperMenuOpen(false)
+                          setFinanceMenuOpen(false)
                         }}
                         className={`inline-flex items-center px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                           isAdministrationMenuActive
@@ -328,6 +405,30 @@ export default function Layout({ children }) {
                     Developer
                   </div>
                   {developerMenuItems.map((item) => (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      className={`flex items-center px-4 py-3 rounded-lg text-base font-medium transition-colors ${
+                        isActive(item.path)
+                          ? 'bg-primary-50 text-primary-700'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <span className="mr-3 text-xl">{item.icon}</span>
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+              
+              {/* Finance Menu in Mobile */}
+              {financeMenuItems.length > 0 && (
+                <div className="border-t border-gray-100 mt-2 pt-2">
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                    Finance
+                  </div>
+                  {financeMenuItems.map((item) => (
                     <Link
                       key={item.path}
                       to={item.path}
