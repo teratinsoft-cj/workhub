@@ -9,7 +9,7 @@ Designed for PostgreSQL production use, compatible with SQLite for development.
 """
 from alembic import op
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects import postgresql as pg
 
 # revision identifiers, used by Alembic.
 revision = '001_initial_schema'
@@ -23,37 +23,39 @@ def upgrade():
     bind = op.get_bind()
     is_postgresql = bind.dialect.name == 'postgresql'
     
-    # Create enum types for PostgreSQL
+    # Create enum types for PostgreSQL (only if they don't exist)
+    # Note: We create them first, then use pg.ENUM with create_type=False to prevent SQLAlchemy from trying to create them
     if is_postgresql:
+        # Check and create enum types only if they don't exist
         op.execute("""
             DO $$ BEGIN
-                CREATE TYPE userrole AS ENUM ('super_admin', 'project_lead', 'project_owner', 'developer');
-            EXCEPTION
-                WHEN duplicate_object THEN null;
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'userrole') THEN
+                    CREATE TYPE userrole AS ENUM ('super_admin', 'project_lead', 'project_owner', 'developer');
+                END IF;
             END $$;
         """)
         
         op.execute("""
             DO $$ BEGIN
-                CREATE TYPE timesheetstatus AS ENUM ('pending', 'approved', 'rejected');
-            EXCEPTION
-                WHEN duplicate_object THEN null;
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'timesheetstatus') THEN
+                    CREATE TYPE timesheetstatus AS ENUM ('pending', 'approved', 'rejected');
+                END IF;
             END $$;
         """)
         
         op.execute("""
             DO $$ BEGIN
-                CREATE TYPE paymentstatus AS ENUM ('pending', 'paid', 'partial');
-            EXCEPTION
-                WHEN duplicate_object THEN null;
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'paymentstatus') THEN
+                    CREATE TYPE paymentstatus AS ENUM ('pending', 'paid', 'partial');
+                END IF;
             END $$;
         """)
         
         op.execute("""
             DO $$ BEGIN
-                CREATE TYPE projectstatus AS ENUM ('open', 'active', 'hold', 'closed');
-            EXCEPTION
-                WHEN duplicate_object THEN null;
+                IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'projectstatus') THEN
+                    CREATE TYPE projectstatus AS ENUM ('open', 'active', 'hold', 'closed');
+                END IF;
             END $$;
         """)
     
@@ -65,7 +67,7 @@ def upgrade():
         sa.Column('username', sa.String(), nullable=False),
         sa.Column('hashed_password', sa.String(), nullable=False),
         sa.Column('full_name', sa.String(), nullable=False),
-        sa.Column('role', sa.Enum('super_admin', 'project_lead', 'project_owner', 'developer', name='userrole', create_type=not is_postgresql) if not is_postgresql else sa.Enum('super_admin', 'project_lead', 'project_owner', 'developer', name='userrole', create_type=False), nullable=False),
+        sa.Column('role', pg.ENUM('super_admin', 'project_lead', 'project_owner', 'developer', name='userrole', create_type=False) if is_postgresql else sa.Enum('super_admin', 'project_lead', 'project_owner', 'developer', name='userrole', create_type=True), nullable=False),
         sa.Column('is_active', sa.Boolean(), nullable=True, server_default='true'),
         sa.Column('is_approved', sa.Boolean(), nullable=True, server_default='false'),
         sa.Column('can_act_as_developer', sa.Boolean(), nullable=True, server_default='false'),
@@ -103,7 +105,7 @@ def upgrade():
         sa.Column('project_source_id', sa.Integer(), nullable=True),
         sa.Column('start_date', sa.DateTime(timezone=True), nullable=False),
         sa.Column('deadline', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('status', sa.Enum('open', 'active', 'hold', 'closed', name='projectstatus', create_type=not is_postgresql) if not is_postgresql else sa.Enum('open', 'active', 'hold', 'closed', name='projectstatus', create_type=False), nullable=True, server_default='open'),
+        sa.Column('status', pg.ENUM('open', 'active', 'hold', 'closed', name='projectstatus', create_type=False) if is_postgresql else sa.Enum('open', 'active', 'hold', 'closed', name='projectstatus', create_type=True), nullable=True, server_default='open'),
         sa.Column('hold_reason', sa.Text(), nullable=True),
         sa.Column('rate_per_hour', sa.Numeric(10, 2), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=True),
@@ -170,7 +172,7 @@ def upgrade():
         sa.Column('date', sa.DateTime(timezone=True), nullable=False),
         sa.Column('hours', sa.Float(), nullable=False),
         sa.Column('description', sa.Text(), nullable=True),
-        sa.Column('status', sa.Enum('pending', 'approved', 'rejected', name='timesheetstatus', create_type=not is_postgresql) if not is_postgresql else sa.Enum('pending', 'approved', 'rejected', name='timesheetstatus', create_type=False), nullable=True, server_default='pending'),
+        sa.Column('status', pg.ENUM('pending', 'approved', 'rejected', name='timesheetstatus', create_type=False) if is_postgresql else sa.Enum('pending', 'approved', 'rejected', name='timesheetstatus', create_type=True), nullable=True, server_default='pending'),
         sa.Column('validated_by', sa.Integer(), nullable=True),
         sa.Column('validated_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=True),
@@ -243,7 +245,7 @@ def upgrade():
         sa.Column('date_range_end', sa.DateTime(timezone=True), nullable=True),
         sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=True),
         sa.Column('created_by', sa.Integer(), nullable=False),
-        sa.Column('status', sa.Enum('pending', 'paid', 'partial', name='paymentstatus', create_type=not is_postgresql) if not is_postgresql else sa.Enum('pending', 'paid', 'partial', name='paymentstatus', create_type=False), nullable=True, server_default='pending'),
+        sa.Column('status', pg.ENUM('pending', 'paid', 'partial', name='paymentstatus', create_type=False) if is_postgresql else sa.Enum('pending', 'paid', 'partial', name='paymentstatus', create_type=True), nullable=True, server_default='pending'),
         sa.ForeignKeyConstraint(['created_by'], ['users.id'], ),
         sa.ForeignKeyConstraint(['developer_id'], ['users.id'], ),
         sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
