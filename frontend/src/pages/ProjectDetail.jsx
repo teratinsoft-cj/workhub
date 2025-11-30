@@ -18,9 +18,12 @@ export default function ProjectDetail() {
   const [editingTask, setEditingTask] = useState(null)
   const [taskForm, setTaskForm] = useState({ title: '', description: '', status: 'todo', estimation_hours: '' })
   const [developerForm, setDeveloperForm] = useState({ developer_id: '', hourly_rate: '' })
+  const [aiRefining, setAiRefining] = useState({ title: false, description: false })
   const [activeTab, setActiveTab] = useState('developers') // 'developers' or 'tasks'
   const [showRateModal, setShowRateModal] = useState(false)
   const [ratePerHour, setRatePerHour] = useState('')
+  const [showAiReviewModal, setShowAiReviewModal] = useState(false)
+  const [aiReviewData, setAiReviewData] = useState({ field: null, original: '', refined: '' })
 
   // Developers should not access project detail pages
   useEffect(() => {
@@ -179,6 +182,69 @@ export default function ProjectDetail() {
     setShowTaskModal(false)
     setEditingTask(null)
     setTaskForm({ title: '', description: '', status: 'todo', estimation_hours: '' })
+    setAiRefining({ title: false, description: false })
+  }
+
+  const handleRefineWithAI = async (field) => {
+    try {
+      setAiRefining(prev => ({ ...prev, [field]: true }))
+      
+      const requestData = {}
+      let originalValue = ''
+      
+      if (field === 'title' && taskForm.title) {
+        requestData.title = taskForm.title
+        originalValue = taskForm.title
+      } else if (field === 'description' && taskForm.description) {
+        requestData.description = taskForm.description
+        originalValue = taskForm.description
+      } else {
+        toast.error(`Please enter a ${field} first`)
+        setAiRefining(prev => ({ ...prev, [field]: false }))
+        return
+      }
+
+      const response = await api.post('/ai/refine-task', requestData)
+      
+      let refinedValue = ''
+      if (field === 'title' && response.data.refined_title) {
+        refinedValue = response.data.refined_title
+      } else if (field === 'description' && response.data.refined_description) {
+        refinedValue = response.data.refined_description
+      }
+      
+      if (refinedValue) {
+        // Show review modal instead of directly updating
+        setAiReviewData({ field, original: originalValue, refined: refinedValue })
+        setShowAiReviewModal(true)
+      } else {
+        toast.error('No refined content received from AI')
+      }
+    } catch (error) {
+      console.error('Error refining with AI:', error)
+      const errorMessage = error.response?.data?.detail || 'Failed to refine with AI'
+      toast.error(errorMessage)
+    } finally {
+      setAiRefining(prev => ({ ...prev, [field]: false }))
+    }
+  }
+
+  const handleAcceptAiRefinement = () => {
+    if (aiReviewData.field === 'title') {
+      setTaskForm(prev => ({ ...prev, title: aiReviewData.refined }))
+      toast.success('Title updated with AI refinement!')
+    } else if (aiReviewData.field === 'description') {
+      setTaskForm(prev => ({ ...prev, description: aiReviewData.refined }))
+      toast.success('Description updated with AI refinement!')
+    }
+    setShowAiReviewModal(false)
+    setAiReviewData({ field: null, original: '', refined: '' })
+  }
+
+  const handleRejectAiRefinement = () => {
+    setShowAiReviewModal(false)
+    setAiReviewData({ field: null, original: '', refined: '' })
+    toast.info('AI refinement rejected')
   }
 
   const handleDeveloperSubmit = async (e) => {
@@ -616,9 +682,35 @@ export default function ProjectDetail() {
             <div className="card-body">
               <form onSubmit={handleTaskSubmit} className="space-y-6">
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Title *
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Title *
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleRefineWithAI('title')}
+                      disabled={aiRefining.title || !taskForm.title}
+                      className="text-xs btn btn-sm btn-outline-primary flex items-center gap-1"
+                      title="Refine title with AI"
+                    >
+                      {aiRefining.title ? (
+                        <>
+                          <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Refining...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          AI Refine
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <input
                     type="text"
                     required
@@ -631,9 +723,35 @@ export default function ProjectDetail() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Description
-                  </label>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-sm font-semibold text-gray-700">
+                      Description
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => handleRefineWithAI('description')}
+                      disabled={aiRefining.description || !taskForm.description}
+                      className="text-xs btn btn-sm btn-outline-primary flex items-center gap-1"
+                      title="Refine description with AI"
+                    >
+                      {aiRefining.description ? (
+                        <>
+                          <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Refining...
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                          AI Refine
+                        </>
+                      )}
+                    </button>
+                  </div>
                   <textarea
                     rows={6}
                     className="input resize-y"
@@ -763,6 +881,63 @@ export default function ProjectDetail() {
       )}
 
 
+      {/* AI Review Modal */}
+      {showAiReviewModal && (
+        <div className="modal-overlay" onClick={handleRejectAiRefinement}>
+          <div className="modal-content max-w-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">
+                  Review AI Refinement - {aiReviewData.field === 'title' ? 'Title' : aiReviewData.field === 'description' ? 'Description' : 'Track Summary'}
+                </h3>
+                <button
+                  onClick={handleRejectAiRefinement}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="card-body">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Original Content
+                  </label>
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{aiReviewData.original || '(empty)'}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    AI Refined Content
+                  </label>
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{aiReviewData.refined}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-4">
+                <button
+                  onClick={handleRejectAiRefinement}
+                  className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={handleAcceptAiRefinement}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                >
+                  Accept & Use
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Rate Per Hour Modal */}
       {showRateModal && (
         <div className="modal-overlay" onClick={() => setShowRateModal(false)}>
@@ -834,6 +1009,9 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
   const [selectedDeveloperId, setSelectedDeveloperId] = useState('')
   const [timesheets, setTimesheets] = useState([])
   const [loadingTimesheets, setLoadingTimesheets] = useState(false)
+  const [refiningTrackSummary, setRefiningTrackSummary] = useState(false)
+  const [showTrackSummaryReviewModal, setShowTrackSummaryReviewModal] = useState(false)
+  const [trackSummaryReviewData, setTrackSummaryReviewData] = useState({ original: '', refined: '' })
   
   // Safety check for task
   if (!task) {
@@ -903,6 +1081,45 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
     const trackSummaryValue = trackSummary.trim() === '' ? null : trackSummary.trim()
     onUpdateHours(task.id, billableValue, productivityValue, trackSummaryValue)
     setShowHoursModal(false)
+  }
+
+  const handleRefineTrackSummary = async () => {
+    if (!trackSummary) {
+      toast.error('Please enter a track summary first')
+      return
+    }
+
+    try {
+      setRefiningTrackSummary(true)
+      const response = await api.post('/ai/refine-task', { track_summary: trackSummary })
+      
+      if (response.data.refined_track_summary) {
+        // Show review modal instead of directly updating
+        setTrackSummaryReviewData({ original: trackSummary, refined: response.data.refined_track_summary })
+        setShowTrackSummaryReviewModal(true)
+      } else {
+        toast.error('No refined content received from AI')
+      }
+    } catch (error) {
+      console.error('Error refining track summary with AI:', error)
+      const errorMessage = error.response?.data?.detail || 'Failed to refine track summary with AI'
+      toast.error(errorMessage)
+    } finally {
+      setRefiningTrackSummary(false)
+    }
+  }
+
+  const handleAcceptTrackSummaryRefinement = () => {
+    setTrackSummary(trackSummaryReviewData.refined)
+    setShowTrackSummaryReviewModal(false)
+    setTrackSummaryReviewData({ original: '', refined: '' })
+    toast.success('Track summary updated with AI refinement!')
+  }
+
+  const handleRejectTrackSummaryRefinement = () => {
+    setShowTrackSummaryReviewModal(false)
+    setTrackSummaryReviewData({ original: '', refined: '' })
+    toast.info('AI refinement rejected')
   }
 
   return (
@@ -1245,9 +1462,35 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Track Summary (for Invoice)
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Track Summary (for Invoice)
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleRefineTrackSummary}
+                    disabled={refiningTrackSummary || !trackSummary}
+                    className="text-xs btn btn-sm btn-outline-primary flex items-center gap-1"
+                    title="Refine track summary with AI"
+                  >
+                    {refiningTrackSummary ? (
+                      <>
+                        <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Refining...
+                      </>
+                    ) : (
+                      <>
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                        AI Refine
+                      </>
+                    )}
+                  </button>
+                </div>
                 <textarea
                   rows={4}
                   className="mt-1 block w-full px-3 py-2 border rounded-md"
@@ -1278,6 +1521,61 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Track Summary Review Modal */}
+      {showTrackSummaryReviewModal && (
+        <div className="modal-overlay" onClick={handleRejectTrackSummaryRefinement}>
+          <div className="modal-content max-w-3xl" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Review AI Refinement - Track Summary</h3>
+                <button
+                  onClick={handleRejectTrackSummaryRefinement}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="card-body">
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Original Content
+                  </label>
+                  <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{trackSummaryReviewData.original || '(empty)'}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    AI Refined Content
+                  </label>
+                  <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{trackSummaryReviewData.refined}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-4">
+                <button
+                  onClick={handleRejectTrackSummaryRefinement}
+                  className="px-4 py-2 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
+                >
+                  Reject
+                </button>
+                <button
+                  onClick={handleAcceptTrackSummaryRefinement}
+                  className="px-4 py-2 bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors"
+                >
+                  Accept & Use
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
