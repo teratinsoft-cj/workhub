@@ -129,16 +129,61 @@ def update_timesheet(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    db_timesheet = db.query(Timesheet).filter(Timesheet.id == timesheet_id).first()
+    # Load timesheet with project relationship
+    db_timesheet = db.query(Timesheet).options(joinedload(Timesheet.project)).filter(Timesheet.id == timesheet_id).first()
     if not db_timesheet:
         raise HTTPException(status_code=404, detail="Timesheet not found")
     
-    # Only allow updates if pending and user owns it
-    if db_timesheet.status != TimesheetStatus.PENDING:
-        raise HTTPException(status_code=400, detail="Cannot update validated timesheet")
+    # Rejected timesheets cannot be updated
+    if db_timesheet.status == TimesheetStatus.REJECTED:
+        raise HTTPException(status_code=400, detail="Cannot update rejected timesheet")
     
-    if db_timesheet.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to update this timesheet")
+    # Check if timesheet is approved
+    is_approved = db_timesheet.status == TimesheetStatus.APPROVED
+    
+    # Get the project to check ownership
+    project = db_timesheet.project
+    
+    # Check permissions in priority order:
+    # 1. Super admin can edit any timesheet
+    # 2. Project leads (by project ownership) can edit any timesheet (pending or approved) in their projects
+    # 3. Developers can only edit their own pending timesheets
+    
+    # Check if user is the project lead for this project (regardless of their role)
+    is_project_lead = project.project_lead_id == current_user.id
+    
+    if current_user.role.value == "super_admin":
+        # Super admin can edit any timesheet
+        pass
+    elif is_project_lead:
+        # User is the project lead for this project - can edit any timesheet (pending or approved)
+        pass
+    elif current_user.role.value == "developer" or current_user.role.value == "project_lead":
+        # For developers or project leads who are not the lead of this specific project:
+        # - Developers can only edit their own pending timesheets
+        # - Project leads who don't own this project are treated as developers
+        if is_approved:
+            raise HTTPException(status_code=403, detail="Only the project lead can edit approved timesheets. Developers can only edit their own pending timesheets.")
+        if db_timesheet.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to update this timesheet")
+    else:
+        # Other roles (project_owner) cannot edit timesheets
+        raise HTTPException(status_code=403, detail="Not authorized to update timesheets")
+    
+    # Verify task if task_id is being updated
+    if timesheet_update.task_id:
+        task = db.query(Task).filter(Task.id == timesheet_update.task_id).first()
+        if not task or task.project_id != timesheet_update.project_id:
+            raise HTTPException(status_code=404, detail="Task not found or not in this project")
+    
+    # Verify project access
+    project = db.query(Project).filter(Project.id == timesheet_update.project_id).first()
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    
+    if current_user.role.value != "project_lead":
+        if not any(dp.developer_id == current_user.id for dp in project.developer_projects):
+            raise HTTPException(status_code=403, detail="Not authorized to update timesheet for this project")
     
     for key, value in timesheet_update.dict().items():
         setattr(db_timesheet, key, value)
@@ -153,16 +198,34 @@ def delete_timesheet(
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
-    db_timesheet = db.query(Timesheet).filter(Timesheet.id == timesheet_id).first()
+    # Load timesheet with project relationship
+    db_timesheet = db.query(Timesheet).options(joinedload(Timesheet.project)).filter(Timesheet.id == timesheet_id).first()
     if not db_timesheet:
         raise HTTPException(status_code=404, detail="Timesheet not found")
     
-    # Only allow deletion if pending and user owns it
-    if db_timesheet.status != TimesheetStatus.PENDING:
-        raise HTTPException(status_code=400, detail="Cannot delete validated timesheet")
+    project = db_timesheet.project
     
-    if db_timesheet.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized")
+    # Check permissions:
+    # 1. Super admin can delete any timesheet
+    # 2. Project leads can delete any timesheet in their projects
+    # 3. Developers can only delete their own pending timesheets
+    
+    is_project_lead = project.project_lead_id == current_user.id
+    
+    if current_user.role.value == "super_admin":
+        # Super admin can delete any timesheet
+        pass
+    elif is_project_lead:
+        # Project leads can delete any timesheet (pending, approved, rejected) in their projects
+        pass
+    elif current_user.role.value == "developer":
+        # Developers can only delete their own pending timesheets
+        if db_timesheet.status != TimesheetStatus.PENDING:
+            raise HTTPException(status_code=400, detail="Developers can only delete pending timesheets")
+        if db_timesheet.user_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized to delete this timesheet")
+    else:
+        raise HTTPException(status_code=403, detail="Not authorized to delete timesheets")
     
     db.delete(db_timesheet)
     db.commit()

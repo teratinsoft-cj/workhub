@@ -19,8 +19,6 @@ export default function ProjectDetail() {
   const [taskForm, setTaskForm] = useState({ title: '', description: '', status: 'todo', estimation_hours: '' })
   const [developerForm, setDeveloperForm] = useState({ developer_id: '', hourly_rate: '' })
   const [activeTab, setActiveTab] = useState('developers') // 'developers' or 'tasks'
-  const [selectedTasks, setSelectedTasks] = useState([]) // For project owners to select tasks for invoice
-  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
   const [showRateModal, setShowRateModal] = useState(false)
   const [ratePerHour, setRatePerHour] = useState('')
 
@@ -237,12 +235,13 @@ export default function ProjectDetail() {
     }
   }
 
-  const handleUpdateTaskHours = async (taskId, billableHours, productivityHours) => {
+  const handleUpdateTaskHours = async (taskId, billableHours, productivityHours, trackSummary) => {
     try {
       // billableHours and productivityHours are already parsed or null at this point
       await api.put(`/tasks/${taskId}/hours`, {
         billable_hours: billableHours,
         productivity_hours: productivityHours,
+        track_summary: trackSummary,
       })
       toast.success('Task hours updated successfully!')
       // Refresh tasks to show updated values immediately
@@ -576,55 +575,21 @@ export default function ProjectDetail() {
                 </div>
               ) : (
                 // Card view for project leads and super admins
-                <div className="space-y-4">
-                  {selectedTasks.length > 0 && (user?.role === 'project_lead' || user?.role === 'super_admin') && (
-                    <div className="card shadow-md border-2 border-primary-200 bg-primary-50">
-                      <div className="card-body py-3">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-3">
-                            <span className="text-sm font-semibold text-primary-800">
-                              {selectedTasks.length} task(s) selected
-                            </span>
-                          </div>
-                          <div className="flex items-center space-x-2">
-                            <button
-                              onClick={() => setSelectedTasks([])}
-                              className="btn btn-secondary text-sm py-1.5 px-3"
-                            >
-                              Clear Selection
-                            </button>
-                            <button
-                              onClick={() => setShowInvoiceModal(true)}
-                              className="btn btn-primary text-sm py-1.5 px-3"
-                            >
-                              <svg className="w-4 h-4 mr-1.5 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                              </svg>
-                              Create Invoice
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {tasks.map((task) => (
-                      <TaskCard
-                        key={`task-${task.id}-${task.billable_hours}-${task.productivity_hours}`}
-                        task={task}
-                        isProjectLead={isProjectLead}
-                        canManage={canManage}
-                        availableDevelopers={developers}
-                        onUpdateHours={handleUpdateTaskHours}
-                        onEdit={handleEditTask}
-                        onAssignDeveloper={handleAssignDeveloper}
-                        onUnassignDeveloper={handleUnassignDeveloper}
-                        selectedTasks={selectedTasks}
-                        setSelectedTasks={setSelectedTasks}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {tasks.map((task) => (
+                    <TaskCard
+                      key={`task-${task.id}-${task.billable_hours}-${task.productivity_hours}`}
+                      task={task}
+                      isProjectLead={isProjectLead}
+                      canManage={canManage}
+                      availableDevelopers={developers}
+                      onUpdateHours={handleUpdateTaskHours}
+                      onEdit={handleEditTask}
+                      onAssignDeveloper={handleAssignDeveloper}
+                      onUnassignDeveloper={handleUnassignDeveloper}
                       />
                     ))}
                   </div>
-                </div>
               )}
             </div>
           )}
@@ -633,86 +598,105 @@ export default function ProjectDetail() {
 
       {/* Task Modal */}
       {showTaskModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-medium mb-4">{editingTask ? 'Edit Task' : 'Create Task'}</h3>
-            <form onSubmit={handleTaskSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Title
-                </label>
-                <input
-                  type="text"
-                  required
-                  className="mt-1 block w-full px-3 py-2 border rounded-md"
-                  value={taskForm.title}
-                  onChange={(e) =>
-                    setTaskForm({ ...taskForm, title: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Description
-                </label>
-                <textarea
-                  rows={3}
-                  className="mt-1 block w-full px-3 py-2 border rounded-md"
-                  value={taskForm.description}
-                  onChange={(e) =>
-                    setTaskForm({ ...taskForm, description: e.target.value })
-                  }
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Estimation Hours *
-                </label>
-                <input
-                  type="number"
-                  step="0.25"
-                  min="0"
-                  required
-                  className="mt-1 block w-full px-3 py-2 border rounded-md"
-                  value={taskForm.estimation_hours}
-                  onChange={(e) =>
-                    setTaskForm({ ...taskForm, estimation_hours: e.target.value })
-                  }
-                  placeholder="Enter estimated hours"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700">
-                  Status
-                </label>
-                <select
-                  className="mt-1 block w-full px-3 py-2 border rounded-md"
-                  value={taskForm.status}
-                  onChange={(e) =>
-                    setTaskForm({ ...taskForm, status: e.target.value })
-                  }
-                >
-                  <option value="todo">Todo</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="completed">Completed</option>
-                </select>
-              </div>
-              <div className="flex justify-end space-x-3">
+        <div className="modal-overlay" onClick={handleCloseTaskModal}>
+          <div className="modal-content max-w-4xl" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">{editingTask ? 'Edit Task' : 'Create Task'}</h3>
                 <button
-                  type="button"
                   onClick={handleCloseTaskModal}
-                  className="px-4 py-2 bg-gray-200 rounded-md"
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 bg-primary-600 text-white rounded-md"
-                >
-                  {editingTask ? 'Update' : 'Create'}
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </button>
               </div>
-            </form>
+            </div>
+            <div className="card-body">
+              <form onSubmit={handleTaskSubmit} className="space-y-6">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    className="input"
+                    value={taskForm.title}
+                    onChange={(e) =>
+                      setTaskForm({ ...taskForm, title: e.target.value })
+                    }
+                    placeholder="Enter task title"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Description
+                  </label>
+                  <textarea
+                    rows={6}
+                    className="input resize-y"
+                    value={taskForm.description}
+                    onChange={(e) =>
+                      setTaskForm({ ...taskForm, description: e.target.value })
+                    }
+                    placeholder="Enter task description (supports multiple lines)"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Estimation Hours *
+                    </label>
+                    <input
+                      type="number"
+                      step="0.25"
+                      min="0"
+                      required
+                      className="input"
+                      value={taskForm.estimation_hours}
+                      onChange={(e) =>
+                        setTaskForm({ ...taskForm, estimation_hours: e.target.value })
+                      }
+                      placeholder="Enter estimated hours"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      className="input"
+                      value={taskForm.status}
+                      onChange={(e) =>
+                        setTaskForm({ ...taskForm, status: e.target.value })
+                      }
+                    >
+                      <option value="todo">Todo</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="testing">Testing</option>
+                      <option value="completed">Completed</option>
+                    </select>
+                  </div>
+                </div>
+                <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+                  <button
+                    type="button"
+                    onClick={handleCloseTaskModal}
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                  >
+                    {editingTask ? 'Update Task' : 'Create Task'}
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}
@@ -778,23 +762,6 @@ export default function ProjectDetail() {
         </div>
       )}
 
-      {/* Invoice/Payment Modal for Project Leads */}
-      {showInvoiceModal && (user?.role === 'project_lead' || user?.role === 'super_admin') && project && (
-        <InvoiceModal
-          project={project}
-          selectedTaskIds={selectedTasks}
-          tasks={tasks.filter(t => selectedTasks.includes(t.id))}
-          onClose={() => {
-            setShowInvoiceModal(false)
-            setSelectedTasks([])
-          }}
-          onSuccess={() => {
-            setShowInvoiceModal(false)
-            setSelectedTasks([])
-            fetchTasks()
-          }}
-        />
-      )}
 
       {/* Rate Per Hour Modal */}
       {showRateModal && (
@@ -857,12 +824,13 @@ export default function ProjectDetail() {
 }
 
 // Task Card Component
-function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdateHours, onEdit, onAssignDeveloper, onUnassignDeveloper, selectedTasks, setSelectedTasks }) {
+function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdateHours, onEdit, onAssignDeveloper, onUnassignDeveloper }) {
   const { user } = useAuth()
   const [showHoursModal, setShowHoursModal] = useState(false)
   const [showAssignModal, setShowAssignModal] = useState(false)
   const [billableHours, setBillableHours] = useState('')
   const [productivityHours, setProductivityHours] = useState('')
+  const [trackSummary, setTrackSummary] = useState('')
   const [selectedDeveloperId, setSelectedDeveloperId] = useState('')
   const [timesheets, setTimesheets] = useState([])
   const [loadingTimesheets, setLoadingTimesheets] = useState(false)
@@ -884,8 +852,17 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
     if (showHoursModal) {
       setBillableHours(task.billable_hours !== null && task.billable_hours !== undefined ? task.billable_hours.toString() : '')
       setProductivityHours(task.productivity_hours !== null && task.productivity_hours !== undefined ? task.productivity_hours.toString() : '')
+      // Set track_summary, defaulting to title + description if track_summary is empty
+      if (task.track_summary) {
+        setTrackSummary(task.track_summary)
+      } else {
+        const summaryParts = []
+        if (task.title) summaryParts.push(task.title)
+        if (task.description) summaryParts.push(task.description)
+        setTrackSummary(summaryParts.join('\n\n'))
+      }
     }
-  }, [task.billable_hours, task.productivity_hours, showHoursModal])
+  }, [task.billable_hours, task.productivity_hours, task.track_summary, task.title, task.description, showHoursModal])
 
   const fetchTimesheets = async () => {
     try {
@@ -907,8 +884,8 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
   const assignedDevelopers = projectDevelopers
     .filter(dev => assignedDeveloperIds.includes(dev.id))
   
+  // For single developer assignment, show all developers (including currently assigned one for replacement)
   const unassignedDevelopers = projectDevelopers
-    .filter(dev => !assignedDeveloperIds.includes(dev.id))
   
   const handleAssign = () => {
     if (selectedDeveloperId) {
@@ -923,94 +900,55 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
     // Convert empty strings to null, and parse valid numbers
     const billableValue = billableHours.trim() === '' ? null : (isNaN(parseFloat(billableHours)) ? null : parseFloat(billableHours))
     const productivityValue = productivityHours.trim() === '' ? null : (isNaN(parseFloat(productivityHours)) ? null : parseFloat(productivityHours))
-    onUpdateHours(task.id, billableValue, productivityValue)
+    const trackSummaryValue = trackSummary.trim() === '' ? null : trackSummary.trim()
+    onUpdateHours(task.id, billableValue, productivityValue, trackSummaryValue)
     setShowHoursModal(false)
   }
 
   return (
     <>
-      <div className="card hover:shadow-medium transition-all duration-300">
-        <div className="card-body">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex-1 flex items-center">
-              {(user?.role === 'project_lead' || user?.role === 'super_admin') && selectedTasks && setSelectedTasks && (
-                <input
-                  type="checkbox"
-                  checked={selectedTasks.includes(task.id)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedTasks([...selectedTasks, task.id])
-                    } else {
-                      setSelectedTasks(selectedTasks.filter(id => id !== task.id))
-                    }
-                  }}
-                  className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 mr-2"
-                />
-              )}
-              <h3 className="font-bold text-gray-900 text-lg">{task.title}</h3>
-            </div>
-            <div className="flex space-x-1 ml-2">
-              {canManage && (
-                <button
-                  onClick={() => onEdit(task)}
-                  className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  title="Edit task"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                  </svg>
-                </button>
-              )}
-              {isProjectLead && (
-                <button
-                  onClick={() => {
-                    setShowHoursModal(true)
-                  }}
-                  className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-colors"
-                  title="Set billable/productivity hours"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
-              )}
-            </div>
+      <div className="card hover:shadow-lg transition-all duration-300 border-l-4 border-l-primary-500">
+        <div className="card-body p-6">
+          {/* Task Title - Full Width */}
+          <div className="mb-4">
+            <h3 className="text-lg font-bold text-gray-900 leading-tight">{task.title}</h3>
           </div>
-          <p className="text-sm text-gray-600 mb-4">{task.description || 'No description'}</p>
-        
-          <div className="space-y-2 mb-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Estimation Hours:</span>
-              <span className="font-semibold text-purple-600">
+
+          {/* Hours Metrics Grid */}
+          <div className="grid grid-cols-2 gap-3 mb-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex flex-col">
+              <span className="text-xs font-medium text-gray-500 mb-1">Estimation</span>
+              <span className="text-base font-bold text-purple-600">
                 {task.estimation_hours?.toFixed(2) || '0.00'} hrs
               </span>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-600">Worked Hours:</span>
-              <span className="font-semibold text-gray-900">
+            <div className="flex flex-col">
+              <span className="text-xs font-medium text-gray-500 mb-1">Worked</span>
+              <span className="text-base font-bold text-gray-900">
                 {task.cumulative_worked_hours?.toFixed(2) || '0.00'} hrs
               </span>
             </div>
             {task.billable_hours !== null && task.billable_hours !== undefined && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Billable Hours:</span>
-                <span className="font-semibold text-primary-600">
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-gray-500 mb-1">Billable</span>
+                <span className="text-base font-bold text-primary-600">
                   {task.billable_hours.toFixed(2)} hrs
                 </span>
               </div>
             )}
             {task.productivity_hours !== null && task.productivity_hours !== undefined && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-gray-600">Productivity Hours:</span>
-                <span className="font-semibold text-blue-600">
+              <div className="flex flex-col">
+                <span className="text-xs font-medium text-gray-500 mb-1">Productivity</span>
+                <span className="text-base font-bold text-blue-600">
                   {task.productivity_hours.toFixed(2)} hrs
                 </span>
               </div>
             )}
           </div>
 
-          <div className="pt-3 border-t border-gray-100 space-y-2">
-            <div className="flex items-center justify-between">
+          {/* Footer with Status, Developers, and Actions */}
+          <div className="pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-3">
               <span
                 className={`badge ${
                   task.status === 'completed'
@@ -1024,33 +962,60 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
               >
                 {task.status?.charAt(0).toUpperCase() + task.status?.slice(1).replace('_', ' ')}
               </span>
+              
+              {/* Action Buttons */}
+              <div className="flex items-center space-x-2">
+                {canManage && (
+                  <button
+                    onClick={() => onEdit(task)}
+                    className="p-2 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
+                    title="Edit task"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                )}
+                {isProjectLead && (
+                  <button
+                    onClick={() => {
+                      setShowHoursModal(true)
+                    }}
+                    className="btn btn-sm btn-outline-primary"
+                    title="View timesheets and set hours"
+                  >
+                    View
+                  </button>
+                )}
+              </div>
             </div>
             
-            {/* Assigned Developers */}
-            <div className="mt-2">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-xs font-medium text-gray-600">Assigned Developers:</span>
-                {canManage && unassignedDevelopers.length > 0 && (
+            {/* Assigned Developer */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Assigned Developer</span>
+                {canManage && (
                   <button
                     onClick={() => setShowAssignModal(true)}
-                    className="text-xs text-primary-600 hover:text-primary-700 font-medium"
+                    className="text-xs text-primary-600 hover:text-primary-700 font-semibold hover:underline"
                   >
-                    + Assign
+                    {assignedDevelopers.length > 0 ? 'Change' : '+ Assign'}
                   </button>
                 )}
               </div>
               {assignedDevelopers.length > 0 ? (
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-2">
                   {assignedDevelopers.map((dev) => (
                     <span
                       key={dev.id}
-                      className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-primary-100 text-primary-800"
+                      className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-medium bg-primary-100 text-primary-800 border border-primary-200"
                     >
                       {dev.full_name}
                       {canManage && (
                         <button
                           onClick={() => onUnassignDeveloper(task.id, dev.id)}
-                          className="ml-1 text-primary-600 hover:text-primary-800"
+                          className="ml-1.5 text-primary-600 hover:text-primary-800 font-bold"
+                          title="Remove developer"
                         >
                           ×
                         </button>
@@ -1059,7 +1024,7 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400">No developers assigned</p>
+                <p className="text-xs text-gray-400 italic">No developer assigned</p>
               )}
             </div>
           </div>
@@ -1091,8 +1056,13 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
               
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Select Developer *
+                  {assignedDevelopers.length > 0 ? 'Change Developer' : 'Select Developer'} *
                 </label>
+                {assignedDevelopers.length > 0 && (
+                  <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
+                    Currently assigned: <strong>{assignedDevelopers[0].full_name}</strong>
+                  </div>
+                )}
                 <select
                   className="input"
                   value={selectedDeveloperId}
@@ -1110,7 +1080,10 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 mt-4">
                 <button
                   type="button"
-                  onClick={() => setShowAssignModal(false)}
+                  onClick={() => {
+                    setShowAssignModal(false)
+                    setSelectedDeveloperId('')
+                  }}
                   className="btn btn-secondary"
                 >
                   Cancel
@@ -1121,7 +1094,7 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
                   disabled={!selectedDeveloperId}
                   className="btn btn-primary"
                 >
-                  Assign
+                  {assignedDevelopers.length > 0 ? 'Change' : 'Assign'}
                 </button>
               </div>
             </div>
@@ -1133,12 +1106,16 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-10 mx-auto p-5 border w-full max-w-3xl shadow-lg rounded-md bg-white my-10">
             <h3 className="text-lg font-medium mb-4">Set Task Hours</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Task: <strong>{task.title}</strong>
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-              Total Approved Hours: <strong>{task.cumulative_worked_hours?.toFixed(2) || '0.00'} hrs</strong>
-            </p>
+            <div className="mb-4">
+              <p className="text-sm font-semibold text-gray-900 mb-1">
+                Task: <strong>{task.title}</strong>
+              </p>
+              {task.description && (
+                <p className="text-sm text-gray-600 mt-2 break-words whitespace-normal">
+                  {task.description}
+                </p>
+              )}
+            </div>
             
             {/* Timesheets Section */}
             {isProjectLead && (
@@ -1151,64 +1128,83 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
                 ) : timesheets.length === 0 ? (
                   <p className="text-sm text-gray-500 italic">No timesheets found for this task</p>
                 ) : (
-                  <div className="border border-gray-200 rounded-lg overflow-hidden">
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="px-4 py-2 text-left font-semibold text-gray-700">Date</th>
-                            <th className="px-4 py-2 text-left font-semibold text-gray-700">Developer</th>
-                            <th className="px-4 py-2 text-left font-semibold text-gray-700">Hours</th>
-                            <th className="px-4 py-2 text-left font-semibold text-gray-700">Status</th>
-                            <th className="px-4 py-2 text-left font-semibold text-gray-700">Description</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200">
-                          {timesheets.map((timesheet) => (
-                            <tr key={timesheet.id} className="hover:bg-gray-50">
-                              <td className="px-4 py-2">
-                                {new Date(timesheet.date).toLocaleDateString()}
-                              </td>
-                              <td className="px-4 py-2">
-                                {timesheet.user?.full_name || `User ${timesheet.user_id}`}
-                              </td>
-                              <td className="px-4 py-2 font-semibold">
-                                {timesheet.hours.toFixed(2)} hrs
-                              </td>
-                              <td className="px-4 py-2">
-                                <span
-                                  className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                                    timesheet.status === 'approved'
-                                      ? 'bg-green-100 text-green-800'
-                                      : timesheet.status === 'rejected'
-                                      ? 'bg-red-100 text-red-800'
-                                      : 'bg-yellow-100 text-yellow-800'
-                                  }`}
-                                >
-                                  {timesheet.status?.charAt(0).toUpperCase() + timesheet.status?.slice(1)}
-                                </span>
-                              </td>
-                              <td className="px-4 py-2 text-gray-600">
-                                {timesheet.description || <span className="text-gray-400 italic">No description</span>}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                        <tfoot className="bg-gray-50 border-t-2 border-gray-300">
-                          <tr>
-                            <td colSpan="2" className="px-4 py-2 text-right font-bold text-gray-700">
-                              Total Approved:
-                            </td>
-                            <td className="px-4 py-2 font-bold text-primary-600">
-                              {timesheets
-                                .filter(t => t.status === 'approved')
-                                .reduce((sum, t) => sum + t.hours, 0)
-                                .toFixed(2)} hrs
-                            </td>
-                            <td colSpan="2"></td>
-                          </tr>
-                        </tfoot>
-                      </table>
+                  <div>
+                    {/* Group timesheets by developer */}
+                    {(() => {
+                      const groupedByDeveloper = timesheets.reduce((acc, ts) => {
+                        const devName = ts.user?.full_name || `User ${ts.user_id}`
+                        if (!acc[devName]) {
+                          acc[devName] = []
+                        }
+                        acc[devName].push(ts)
+                        return acc
+                      }, {})
+                      
+                      return Object.entries(groupedByDeveloper).map(([developerName, devTimesheets]) => (
+                        <div key={developerName} className="mb-4 border border-gray-200 rounded-lg overflow-hidden">
+                          {/* Developer Header */}
+                          <div className="bg-primary-50 px-4 py-2 border-b border-gray-200">
+                            <h5 className="text-sm font-semibold text-gray-900">
+                              Developer: <span className="text-primary-700">{developerName}</span>
+                            </h5>
+                          </div>
+                          
+                          {/* Timesheet Table */}
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-4 py-2 text-left font-semibold text-gray-700">Date</th>
+                                  <th className="px-4 py-2 text-left font-semibold text-gray-700">Description</th>
+                                  <th className="px-4 py-2 text-left font-semibold text-gray-700">Hours</th>
+                                  <th className="px-4 py-2 text-left font-semibold text-gray-700">Status</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-200">
+                                {devTimesheets.map((timesheet) => (
+                                  <tr key={timesheet.id} className="hover:bg-gray-50">
+                                    <td className="px-4 py-2">
+                                      {new Date(timesheet.date).toLocaleDateString()}
+                                    </td>
+                                    <td className="px-4 py-2 text-gray-600 break-words">
+                                      {timesheet.description || <span className="text-gray-400 italic">No description</span>}
+                                    </td>
+                                    <td className="px-4 py-2 font-semibold">
+                                      {timesheet.hours.toFixed(2)} hrs
+                                    </td>
+                                    <td className="px-4 py-2">
+                                      <span
+                                        className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
+                                          timesheet.status === 'approved'
+                                            ? 'bg-green-100 text-green-800'
+                                            : timesheet.status === 'rejected'
+                                            ? 'bg-red-100 text-red-800'
+                                            : 'bg-yellow-100 text-yellow-800'
+                                        }`}
+                                      >
+                                        {timesheet.status?.charAt(0).toUpperCase() + timesheet.status?.slice(1)}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      ))
+                    })()}
+                    
+                    {/* Total Summary */}
+                    <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm font-semibold text-gray-700">Total Approved Hours:</span>
+                        <span className="text-sm font-bold text-primary-600">
+                          {timesheets
+                            .filter(t => t.status === 'approved')
+                            .reduce((sum, t) => sum + t.hours, 0)
+                            .toFixed(2)} hrs
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -1248,6 +1244,21 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
                   Hours for productivity tracking
                 </p>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Track Summary (for Invoice)
+                </label>
+                <textarea
+                  rows={4}
+                  className="mt-1 block w-full px-3 py-2 border rounded-md"
+                  value={trackSummary}
+                  onChange={(e) => setTrackSummary(e.target.value)}
+                  placeholder="Summary to show in invoice (auto-filled from task description)"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  This summary will be shown to the project owner in the invoice instead of the task list. Initially copied from task description, but can be modified.
+                </p>
+              </div>
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
                 <button
                   type="button"
@@ -1274,253 +1285,4 @@ function TaskCard({ task, isProjectLead, canManage, availableDevelopers, onUpdat
   )
 }
 
-// Invoice Modal Component for Project Owners
-function InvoiceModal({ project, selectedTaskIds, tasks, onClose, onSuccess }) {
-  const [formData, setFormData] = useState({
-    invoice_amount: '',
-    invoice_date: new Date().toISOString().split('T')[0],
-    notes: '',
-    date_range_start: '',
-    date_range_end: '',
-  })
-  const [loading, setLoading] = useState(false)
-
-  // Calculate total billable hours
-  const totalBillableHours = tasks.reduce((sum, task) => {
-    return sum + (task.billable_hours || 0)
-  }, 0)
-
-  // Calculate total amount based on rate_per_hour and billable hours
-  const calculateTotalAmount = () => {
-    if (!project || !project.rate_per_hour) return 0
-    return totalBillableHours * parseFloat(project.rate_per_hour)
-  }
-
-  // Update amount when tasks or project changes
-  useEffect(() => {
-    if (project && project.rate_per_hour && tasks.length > 0) {
-      const calculatedAmount = calculateTotalAmount()
-      setFormData(prev => ({ ...prev, invoice_amount: calculatedAmount > 0 ? calculatedAmount.toFixed(2) : '' }))
-    }
-  }, [tasks, project])
-
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (selectedTaskIds.length === 0) {
-      toast.error('Please select at least one task')
-      return
-    }
-
-    setLoading(true)
-    try {
-      const payload = {
-        project_id: project.id,
-        invoice_amount: parseFloat(formData.invoice_amount),
-        invoice_date: new Date(formData.invoice_date).toISOString(),
-        notes: formData.notes,
-        date_range_start: formData.date_range_start
-          ? new Date(formData.date_range_start).toISOString()
-          : null,
-        date_range_end: formData.date_range_end
-          ? new Date(formData.date_range_end).toISOString()
-          : null,
-        task_ids: selectedTaskIds,
-      }
-      await api.post('/payments/invoices', payload)
-      toast.success('Invoice created successfully!')
-      onSuccess()
-    } catch (error) {
-      console.error('Error creating payment:', error)
-      toast.error(error.response?.data?.detail || 'Failed to create payment')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-content max-w-4xl" onClick={(e) => e.stopPropagation()}>
-        <div className="card-header">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-bold text-gray-900">Create Invoice/Payment</h3>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div className="card-body">
-          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
-            <p className="text-sm font-semibold text-gray-700 mb-2">Project:</p>
-            <p className="text-lg font-bold text-gray-900">{project.name}</p>
-          </div>
-
-          {/* Selected Tasks with Billable Hours */}
-          <div className="mb-6">
-            <h4 className="text-sm font-bold text-gray-700 mb-3">Selected Tasks:</h4>
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-700">Task</th>
-                    <th className="px-4 py-2 text-left font-semibold text-gray-700">Status</th>
-                    <th className="px-4 py-2 text-right font-semibold text-gray-700">Billable Hours</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
-                  {tasks.map((task) => (
-                    <tr key={task.id}>
-                      <td className="px-4 py-2">
-                        <div className="font-medium text-gray-900">{task.title}</div>
-                        {task.description && (
-                          <div className="text-xs text-gray-500 mt-1">{task.description}</div>
-                        )}
-                      </td>
-                      <td className="px-4 py-2">
-                        <span
-                          className={`badge ${
-                            task.status === 'completed'
-                              ? 'badge-success'
-                              : task.status === 'in_progress'
-                              ? 'badge-warning'
-                              : task.status === 'testing'
-                              ? 'badge-primary'
-                              : 'badge-gray'
-                          }`}
-                        >
-                          {task.status?.charAt(0).toUpperCase() + task.status?.slice(1).replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2 text-right">
-                        {task.billable_hours !== null && task.billable_hours !== undefined ? (
-                          <span className="font-semibold text-primary-600">
-                            {task.billable_hours.toFixed(2)} hrs
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 italic">Not set</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-                <tfoot className="bg-gray-50 border-t-2 border-gray-300">
-                  <tr>
-                    <td colSpan="2" className="px-4 py-3 text-right font-bold text-gray-700">
-                      Total Billable Hours:
-                    </td>
-                    <td className="px-4 py-3 text-right font-bold text-primary-600">
-                      {totalBillableHours.toFixed(2)} hrs
-                    </td>
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Payment Amount (₹) *
-              </label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                required
-                className="input bg-gray-50"
-                value={formData.invoice_amount}
-                readOnly
-                placeholder="Calculated automatically"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                {project && project.rate_per_hour ? (
-                  <>
-                    Calculated: {totalBillableHours.toFixed(2)} hrs × 
-                    ₹{parseFloat(project.rate_per_hour).toFixed(2)}/hr = 
-                    ₹{calculateTotalAmount().toFixed(2)}
-                  </>
-                ) : (
-                  'Please set rate per hour for this project to calculate amount automatically'
-                )}
-              </p>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Invoice Date *
-              </label>
-              <input
-                type="date"
-                required
-                className="input"
-                  value={formData.invoice_date}
-                  onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date Range Start
-                </label>
-                <input
-                  type="date"
-                  className="input"
-                  value={formData.date_range_start}
-                  onChange={(e) => setFormData({ ...formData, date_range_start: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date Range End
-                </label>
-                <input
-                  type="date"
-                  className="input"
-                  value={formData.date_range_end}
-                  onChange={(e) => setFormData({ ...formData, date_range_end: e.target.value })}
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Notes
-              </label>
-              <textarea
-                rows={3}
-                className="input"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Additional notes about this payment..."
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
-              <button
-                type="button"
-                onClick={onClose}
-                className="btn btn-secondary"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="btn btn-primary"
-                disabled={loading}
-              >
-                {loading ? 'Creating...' : 'Create Payment'}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </div>
-  )
-}
 

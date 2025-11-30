@@ -13,6 +13,9 @@ export default function Payments() {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState(null)
   const [invoicePayments, setInvoicePayments] = useState({}) // invoice_id -> payments[]
+  const [invoiceTasks, setInvoiceTasks] = useState({}) // invoice_id -> tasks[]
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false)
+  const [selectedTaskDescription, setSelectedTaskDescription] = useState(null)
   const [statusFilter, setStatusFilter] = useState('pending') // Default to pending
   const [formData, setFormData] = useState({
     amount: '',
@@ -30,9 +33,10 @@ export default function Payments() {
       const response = await api.get('/payments/invoices')
       setInvoices(response.data)
       
-      // Fetch payments for each invoice
+      // Fetch payments and tasks for each invoice
       for (const invoice of response.data) {
         fetchInvoicePayments(invoice.id)
+        fetchInvoiceTasks(invoice.id)
       }
     } catch (error) {
       console.error('Error fetching invoices:', error)
@@ -46,6 +50,15 @@ export default function Payments() {
       setInvoicePayments(prev => ({ ...prev, [invoiceId]: response.data }))
     } catch (error) {
       console.error('Error fetching payments:', error)
+    }
+  }
+
+  const fetchInvoiceTasks = async (invoiceId) => {
+    try {
+      const response = await api.get(`/payments/invoices/${invoiceId}/tasks`)
+      setInvoiceTasks(prev => ({ ...prev, [invoiceId]: response.data }))
+    } catch (error) {
+      console.error('Error fetching invoice tasks:', error)
     }
   }
 
@@ -78,9 +91,12 @@ export default function Payments() {
         newSet.delete(invoiceId)
       } else {
         newSet.add(invoiceId)
-        // Fetch payments if not already loaded
+        // Fetch payments and tasks if not already loaded
         if (!invoicePayments[invoiceId]) {
           fetchInvoicePayments(invoiceId)
+        }
+        if (!invoiceTasks[invoiceId]) {
+          fetchInvoiceTasks(invoiceId)
         }
       }
       return newSet
@@ -150,10 +166,16 @@ export default function Payments() {
     }
   }
 
-  const printInvoice = (invoice) => {
+  const printInvoice = async (invoice) => {
+    // Fetch tasks if not already loaded
+    if (!invoiceTasks[invoice.id]) {
+      await fetchInvoiceTasks(invoice.id)
+    }
+    
     const printWindow = window.open('', '_blank')
     const project = projectsMap[invoice.project_id]
     const payments = invoicePayments[invoice.id] || []
+    const tasks = invoiceTasks[invoice.id] || []
     
     printWindow.document.write(`
       <!DOCTYPE html>
@@ -161,101 +183,344 @@ export default function Payments() {
         <head>
           <title>Invoice #${invoice.id}</title>
           <style>
-            body { font-family: Arial, sans-serif; padding: 40px; }
-            .header { border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
-            .invoice-details { margin-bottom: 30px; }
-            .invoice-details table { width: 100%; border-collapse: collapse; }
-            .invoice-details td { padding: 8px; border-bottom: 1px solid #ddd; }
-            .invoice-details td:first-child { font-weight: bold; width: 200px; }
-            .payments { margin-top: 30px; }
-            .payments table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-            .payments th, .payments td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
-            .payments th { background-color: #f5f5f5; font-weight: bold; }
-            .summary { margin-top: 30px; padding: 20px; background-color: #f9f9f9; border-radius: 5px; }
-            .summary-row { display: flex; justify-content: space-between; margin: 10px 0; }
-            .summary-row.total { font-size: 18px; font-weight: bold; border-top: 2px solid #333; padding-top: 10px; }
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+              font-family: 'Arial', 'Helvetica', sans-serif; 
+              font-size: 12px;
+              line-height: 1.4;
+              padding: 15px;
+              color: #333;
+            }
+            .invoice-container {
+              max-width: 210mm;
+              margin: 0 auto;
+            }
+            .header {
+              border-bottom: 3px solid #2563eb;
+              padding-bottom: 15px;
+              margin-bottom: 15px;
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+            }
+            .header-left h1 {
+              font-size: 28px;
+              color: #2563eb;
+              margin-bottom: 6px;
+            }
+            .header-left p {
+              font-size: 12px;
+              color: #666;
+              margin: 3px 0;
+            }
+            .header-right {
+              text-align: right;
+              font-size: 12px;
+            }
+            .invoice-info {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 15px;
+              margin-bottom: 15px;
+            }
+            .info-box {
+              background: #f8f9fa;
+              padding: 12px;
+              border-radius: 4px;
+              border-left: 3px solid #2563eb;
+            }
+            .info-box h3 {
+              font-size: 10px;
+              color: #666;
+              margin-bottom: 5px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            .info-box p {
+              font-size: 14px;
+              font-weight: bold;
+              color: #333;
+            }
+            .section-title {
+              font-size: 14px;
+              font-weight: bold;
+              color: #2563eb;
+              margin-bottom: 8px;
+              padding-bottom: 5px;
+              border-bottom: 2px solid #e5e7eb;
+            }
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              font-size: 12px;
+              margin-bottom: 15px;
+            }
+            thead {
+              background-color: #2563eb;
+              color: white;
+            }
+            thead th {
+              padding: 8px 10px;
+              text-align: left;
+              font-weight: 600;
+              font-size: 11px;
+              text-transform: uppercase;
+              letter-spacing: 0.5px;
+            }
+            tbody td {
+              padding: 8px 10px;
+              border-bottom: 1px solid #e5e7eb;
+              vertical-align: top;
+            }
+            tbody tr:last-child td {
+              border-bottom: none;
+            }
+            .task-title {
+              font-weight: 600;
+              color: #333;
+              font-size: 12px;
+            }
+            tfoot {
+              background-color: #f8f9fa;
+              font-weight: bold;
+            }
+            tfoot td {
+              padding: 10px;
+              border-top: 2px solid #2563eb;
+              font-size: 13px;
+            }
+            .summary-box {
+              background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%);
+              color: white;
+              padding: 15px;
+              border-radius: 4px;
+              margin-top: 15px;
+            }
+            .summary-row {
+              display: flex;
+              justify-content: space-between;
+              padding: 5px 0;
+              font-size: 13px;
+            }
+            .summary-row.total {
+              font-size: 16px;
+              font-weight: bold;
+              border-top: 2px solid rgba(255,255,255,0.3);
+              padding-top: 8px;
+              margin-top: 5px;
+            }
+            .footer {
+              margin-top: 15px;
+              text-align: center;
+              font-size: 10px;
+              color: #999;
+              padding-top: 10px;
+              border-top: 1px solid #e5e7eb;
+            }
             @media print {
-              body { padding: 20px; }
-              .no-print { display: none; }
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              body { 
+                padding: 10mm;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+              }
+              .invoice-container { max-width: 100%; }
+              thead {
+                background-color: #2563eb !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+              }
+              thead th {
+                background-color: #2563eb !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+              }
+              .summary-box {
+                background: linear-gradient(135deg, #2563eb 0%, #1e40af 100%) !important;
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+              }
+              .header {
+                border-bottom-color: #2563eb !important;
+              }
+              .header-left h1 {
+                color: #2563eb !important;
+              }
+              .section-title {
+                color: #2563eb !important;
+                border-bottom-color: #e5e7eb !important;
+              }
+              .info-box {
+                background: #f8f9fa !important;
+                border-left-color: #2563eb !important;
+              }
+              tfoot {
+                background-color: #f8f9fa !important;
+              }
+              tfoot td {
+                border-top-color: #2563eb !important;
+              }
+              tfoot td:last-child {
+                color: #2563eb !important;
+              }
+              tbody td:last-child {
+                color: #2563eb !important;
+              }
+              .summary-box * {
+                color: white !important;
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+                color-adjust: exact;
+              }
+              @page { 
+                margin: 10mm; 
+                size: A4 portrait; 
+              }
             }
           </style>
         </head>
         <body>
-          <div class="header">
-            <h1>Invoice #${invoice.id}</h1>
-            <p><strong>Project:</strong> ${project?.name || 'N/A'}</p>
-            <p><strong>Invoice Date:</strong> ${format(new Date(invoice.invoice_date), 'MMMM dd, yyyy')}</p>
-          </div>
-          
-          <div class="invoice-details">
-            <table>
-              <tr>
-                <td>Invoice Amount:</td>
-                <td>₹${invoice.invoice_amount.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td>Total Paid:</td>
-                <td>₹${invoice.total_paid.toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td>Remaining Balance:</td>
-                <td>₹${(invoice.invoice_amount - invoice.total_paid).toFixed(2)}</td>
-              </tr>
-              <tr>
-                <td>Status:</td>
-                <td><strong>${invoice.status.toUpperCase()}</strong></td>
-              </tr>
-              ${invoice.notes ? `<tr><td>Notes:</td><td>${invoice.notes}</td></tr>` : ''}
-            </table>
-          </div>
-          
-          ${payments.length > 0 ? `
-            <div class="payments">
-              <h2>Payment History</h2>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Notes</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  ${payments.map(p => `
+          <div class="invoice-container">
+            <div class="header">
+              <div class="header-left">
+                <h1>INVOICE #${invoice.id}</h1>
+                <p><strong>Project:</strong> ${project?.name || 'N/A'}</p>
+                <p><strong>Date:</strong> ${format(new Date(invoice.invoice_date), 'MMMM dd, yyyy')}</p>
+              </div>
+              <div class="header-right">
+                <p><strong>Status:</strong> ${invoice.status.toUpperCase()}</p>
+                ${invoice.notes ? `<p style="margin-top: 4px;"><strong>Notes:</strong><br/>${invoice.notes}</p>` : ''}
+              </div>
+            </div>
+            
+            <div class="invoice-info">
+              <div class="info-box">
+                <h3>Invoice Amount</h3>
+                <p>₹${invoice.invoice_amount.toFixed(2)}</p>
+              </div>
+              <div class="info-box">
+                <h3>Total Paid</h3>
+                <p>₹${invoice.total_paid.toFixed(2)}</p>
+              </div>
+            </div>
+            
+            ${tasks.length > 0 ? `
+              <div>
+                <div class="section-title">Work Summary</div>
+                <table>
+                  <thead>
                     <tr>
-                      <td>${format(new Date(p.payment_date), 'MMM dd, yyyy')}</td>
-                      <td>₹${p.amount.toFixed(2)}</td>
-                      <td>${p.notes || '-'}</td>
+                      <th style="width: 8%;">S.No.</th>
+                      <th style="width: 62%;">Work Summary</th>
+                      <th style="width: 30%; text-align: right;">Billable Hours</th>
                     </tr>
-                  `).join('')}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    ${tasks.map((task, index) => {
+                      const summary = task.track_summary || (task.title && task.description ? `${task.title}\n\n${task.description}` : task.title || task.description || 'No summary available')
+                      return `
+                      <tr>
+                        <td style="text-align: center; vertical-align: top; font-weight: 600;">${index + 1}</td>
+                        <td style="vertical-align: top;">
+                          <div style="font-size: 12px; color: #666; line-height: 1.6; white-space: pre-wrap;">${summary}</div>
+                        </td>
+                        <td style="text-align: right; font-weight: 600; vertical-align: top; color: #2563eb;">
+                          ${task.billable_hours !== null && task.billable_hours !== undefined ? `${task.billable_hours.toFixed(2)} hrs` : 'Not set'}
+                        </td>
+                      </tr>
+                    `
+                    }).join('')}
+                  </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan="2" style="text-align: right; font-weight: bold;">Total Billable Hours:</td>
+                      <td style="text-align: right; font-weight: bold; color: #2563eb;">${tasks.reduce((sum, task) => sum + (task.billable_hours || 0), 0).toFixed(2)} hrs</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            ` : ''}
+            
+            ${payments.length > 0 ? `
+              <div>
+                <div class="section-title">Payment History</div>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Notes</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${payments.map(p => `
+                      <tr>
+                        <td>${format(new Date(p.payment_date), 'MMM dd, yyyy')}</td>
+                        <td style="text-align: right; font-weight: 600;">₹${p.amount.toFixed(2)}</td>
+                        <td>${p.notes || '-'}</td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            ` : ''}
+            
+            <div class="summary-box">
+              <div class="summary-row">
+                <span>Invoice Amount:</span>
+                <span>₹${invoice.invoice_amount.toFixed(2)}</span>
+              </div>
+              <div class="summary-row">
+                <span>Total Paid:</span>
+                <span>₹${invoice.total_paid.toFixed(2)}</span>
+              </div>
+              <div class="summary-row total">
+                <span>Remaining Balance:</span>
+                <span>₹${(invoice.invoice_amount - invoice.total_paid).toFixed(2)}</span>
+              </div>
             </div>
-          ` : ''}
-          
-          <div class="summary">
-            <div class="summary-row">
-              <span>Invoice Amount:</span>
-              <span>₹${invoice.invoice_amount.toFixed(2)}</span>
-            </div>
-            <div class="summary-row">
-              <span>Total Paid:</span>
-              <span>₹${invoice.total_paid.toFixed(2)}</span>
-            </div>
-            <div class="summary-row total">
-              <span>Remaining Balance:</span>
-              <span>₹${(invoice.invoice_amount - invoice.total_paid).toFixed(2)}</span>
+            
+            <div class="footer">
+              <p>Generated on ${format(new Date(), 'MMMM dd, yyyy hh:mm a')}</p>
             </div>
           </div>
-          
-          <div style="margin-top: 40px; text-align: center; color: #666; font-size: 12px;">
-            <p>Generated on ${format(new Date(), 'MMMM dd, yyyy hh:mm a')}</p>
-          </div>
+          <script>
+            // Close window after printing or when print dialog is closed
+            window.addEventListener('afterprint', function() {
+              window.close()
+            })
+            
+            // Fallback: Close window when it regains focus (user closed print dialog)
+            let printDialogClosed = false
+            window.addEventListener('focus', function() {
+              if (!printDialogClosed) {
+                printDialogClosed = true
+                setTimeout(function() {
+                  window.close()
+                }, 100)
+              }
+            })
+            
+            // Trigger print when page loads
+            window.onload = function() {
+              window.print()
+            }
+          </script>
         </body>
       </html>
     `)
     printWindow.document.close()
-    printWindow.print()
   }
 
   const canMakePayment = user?.role === 'project_owner'
@@ -409,8 +674,58 @@ export default function Payments() {
                   </div>
 
                   {isExpanded && (
-                    <div className="mt-6 border-t pt-6">
-                      <h4 className="font-semibold mb-4">Payment History</h4>
+                    <div className="mt-6 border-t pt-6 space-y-6">
+                      {/* Work Summary Section */}
+                      {invoiceTasks[invoice.id] && invoiceTasks[invoice.id].length > 0 && (
+                        <div>
+                          <h4 className="font-semibold mb-4">Work Summary</h4>
+                          <div className="overflow-x-auto">
+                            <table className="min-w-full divide-y divide-gray-200">
+                              <thead className="bg-gray-50">
+                                <tr>
+                                  <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase" style={{width: '8%'}}>S.No.</th>
+                                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase" style={{width: '62%'}}>Work Summary</th>
+                                  <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase" style={{width: '30%'}}>Billable Hours</th>
+                                </tr>
+                              </thead>
+                              <tbody className="bg-white divide-y divide-gray-200">
+                                {invoiceTasks[invoice.id].map((task, index) => {
+                                  const summary = task.track_summary || (task.title && task.description ? `${task.title}\n\n${task.description}` : task.title || task.description || 'No summary available')
+                                  return (
+                                    <tr key={task.id}>
+                                      <td className="px-4 py-3 text-sm font-semibold text-gray-700 text-center align-top">
+                                        {index + 1}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm text-gray-600 whitespace-pre-wrap break-words leading-relaxed align-top">
+                                        {summary}
+                                      </td>
+                                      <td className="px-4 py-3 text-sm font-semibold text-primary-600 text-right align-top">
+                                        {task.billable_hours !== null && task.billable_hours !== undefined
+                                          ? `${task.billable_hours.toFixed(2)} hrs`
+                                          : <span className="text-gray-400">Not set</span>}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                              <tfoot className="bg-gray-50">
+                                <tr>
+                                  <td className="px-4 py-3 text-right font-bold text-gray-700" colSpan="2">
+                                    Total Billable Hours:
+                                  </td>
+                                  <td className="px-4 py-3 text-right font-bold text-primary-600">
+                                    {invoiceTasks[invoice.id].reduce((sum, task) => sum + (task.billable_hours || 0), 0).toFixed(2)} hrs
+                                  </td>
+                                </tr>
+                              </tfoot>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Payment History Section */}
+                      <div>
+                        <h4 className="font-semibold mb-4">Payment History</h4>
                       {payments.length === 0 ? (
                         <p className="text-gray-500 text-sm">No payments recorded yet</p>
                       ) : (
@@ -479,6 +794,7 @@ export default function Payments() {
                           </table>
                         </div>
                       )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -556,6 +872,39 @@ export default function Payments() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Description View Modal */}
+      {showDescriptionModal && selectedTaskDescription && (
+        <div className="modal-overlay" onClick={() => setShowDescriptionModal(false)}>
+          <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Task Description</h3>
+                <button
+                  onClick={() => setShowDescriptionModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="card-body">
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Task:</h4>
+                <p className="text-lg font-bold text-gray-900">{selectedTaskDescription.title}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Description:</h4>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap break-words leading-relaxed">
+                  {selectedTaskDescription.description}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

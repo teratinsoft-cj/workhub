@@ -147,6 +147,7 @@ class TaskResponse(TaskBase):
     estimation_hours: Optional[float] = None
     billable_hours: Optional[float] = None
     productivity_hours: Optional[float] = None
+    track_summary: Optional[str] = None  # Track summary for invoice
     cumulative_worked_hours: Optional[float] = None  # Calculated from timesheets
     assigned_developer_ids: Optional[List[int]] = []  # List of developer IDs assigned to this task
     is_paid: Optional[bool] = None  # Whether task is linked to a paid payment
@@ -159,6 +160,7 @@ class TaskResponse(TaskBase):
 class TaskUpdateHours(BaseModel):
     billable_hours: Optional[float] = None
     productivity_hours: Optional[float] = None
+    track_summary: Optional[str] = None  # Track summary for invoice
 
 # Timesheet Schemas
 class TimesheetBase(BaseModel):

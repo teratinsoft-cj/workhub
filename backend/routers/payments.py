@@ -6,8 +6,8 @@ from datetime import datetime
 import os
 import shutil
 from database import get_db
-from models import User, Invoice, Payment, Project, InvoiceTask, Task, DeveloperPayment, DeveloperProject, TaskDeveloper, PaymentVoucher, PaymentVoucherTask
-from schemas import InvoiceCreate, InvoiceResponse, PaymentCreate, PaymentResponse, DeveloperEarnings, PaymentHistoryItem
+from models import User, Invoice, Payment, Project, InvoiceTask, Task, DeveloperPayment, DeveloperProject, TaskDeveloper, PaymentVoucher, PaymentVoucherTask, Timesheet
+from schemas import InvoiceCreate, InvoiceResponse, PaymentCreate, PaymentResponse, DeveloperEarnings, PaymentHistoryItem, TaskResponse
 from auth import get_current_active_user, require_role, can_act_as_developer
 
 router = APIRouter()
@@ -181,6 +181,72 @@ def get_invoice(
         total_paid=float(total_paid),
         status=status
     )
+
+@router.get("/invoices/{invoice_id}/tasks", response_model=List[TaskResponse])
+def get_invoice_tasks(
+    invoice_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """Get tasks for a specific invoice"""
+    invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
+    if not invoice:
+        raise HTTPException(status_code=404, detail="Invoice not found")
+    
+    project = invoice.project
+    
+    # Check access
+    if current_user.role.value == "project_lead":
+        if project.project_lead_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif current_user.role.value == "project_owner":
+        if project.project_owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Not authorized")
+    elif current_user.role.value != "super_admin":
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
+    # Get tasks linked to this invoice
+    invoice_tasks = db.query(InvoiceTask).filter(InvoiceTask.invoice_id == invoice_id).all()
+    task_ids = [it.task_id for it in invoice_tasks]
+    
+    if not task_ids:
+        return []
+    
+    tasks = db.query(Task).filter(Task.id.in_(task_ids)).all()
+    
+    result = []
+    for task in tasks:
+        # Calculate cumulative hours from approved timesheets
+        cumulative_hours = db.query(func.sum(Timesheet.hours)).filter(
+            Timesheet.task_id == task.id,
+            Timesheet.status == "approved"
+        ).scalar() or 0.0
+        
+        # Get assigned developers
+        assigned_devs = db.query(TaskDeveloper).filter(
+            TaskDeveloper.task_id == task.id
+        ).all()
+        assigned_developer_ids = [ad.developer_id for ad in assigned_devs]
+        
+        task_dict = {
+            "id": task.id,
+            "project_id": task.project_id,
+            "title": task.title,
+            "description": task.description,
+            "status": task.status,
+            "estimation_hours": task.estimation_hours,
+            "billable_hours": task.billable_hours,
+            "productivity_hours": task.productivity_hours,
+            "track_summary": task.track_summary,
+            "cumulative_worked_hours": float(cumulative_hours),
+            "assigned_developer_ids": assigned_developer_ids,
+            "is_paid": True,  # Tasks in invoice are already billed
+            "created_at": task.created_at,
+            "updated_at": task.updated_at
+        }
+        result.append(TaskResponse(**task_dict))
+    
+    return result
 
 # ========== PAYMENT ENDPOINTS ==========
 

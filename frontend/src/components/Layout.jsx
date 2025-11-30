@@ -120,18 +120,18 @@ export default function Layout({ children }) {
               <div className="flex-shrink-0">
                 <Link to="/" className="flex items-center">
                   <h1 className="text-xl font-bold bg-gradient-to-r from-primary-600 to-primary-700 bg-clip-text text-transparent">
-                    WorkHub
-                  </h1>
+                  WorkHub
+                </h1>
                 </Link>
               </div>
               {/* Desktop Navigation */}
               <div className="hidden lg:flex lg:items-center lg:ml-6 lg:space-x-1 flex-1 min-w-0">
                 <div className="flex items-center space-x-1">
                   {primaryItems.map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileMenuOpen(false)}
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
                       className={`inline-flex items-center px-3 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all duration-200 ${
                         isActive(item.path)
                           ? 'bg-primary-50 text-primary-700'
@@ -310,15 +310,15 @@ export default function Layout({ children }) {
                                   setMobileMenuOpen(false)
                                 }}
                                 className={`flex items-center px-4 py-2.5 text-sm transition-colors ${
-                                  isActive(item.path)
+                      isActive(item.path)
                                     ? 'bg-primary-50 text-primary-700 font-medium'
                                     : 'text-gray-700 hover:bg-gray-100'
-                                }`}
-                              >
+                    }`}
+                  >
                                 <span className="mr-3 text-lg">{item.icon}</span>
                                 <span>{item.label}</span>
-                              </Link>
-                            ))}
+                  </Link>
+                ))}
                           </div>
                         </div>
                       )}

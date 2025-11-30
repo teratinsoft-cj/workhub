@@ -13,6 +13,8 @@ export default function Tasks() {
   const [filterProject, setFilterProject] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
   const [filterBilling, setFilterBilling] = useState('all') // all, billed, unbilled
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false)
+  const [selectedTaskDescription, setSelectedTaskDescription] = useState(null)
 
   // Redirect if not project owner or super admin
   useEffect(() => {
@@ -153,34 +155,34 @@ export default function Tasks() {
 
       {/* Tasks Table */}
       <div className="card shadow-lg border-0 bg-white overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+        <div className="table-wrapper">
+          <table className="table">
+            <thead className="table-header">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <th className="table-header-cell">
                   Project
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <th className="table-header-cell">
                   Task
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                  Description
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <th className="table-header-cell">
                   Status
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <th className="table-header-cell">
                   Billable Hours
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                <th className="table-header-cell">
                   Billing Status
+                </th>
+                <th className="table-header-cell w-20">
+                  Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
+            <tbody className="table-body">
               {filteredTasks.length === 0 ? (
                 <tr>
-                  <td colSpan="6" className="px-6 py-12 text-center text-gray-500">
+                  <td colSpan="6" className="table-cell text-center py-12">
                     <div className="flex flex-col items-center">
                       <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
                         <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -196,9 +198,9 @@ export default function Tasks() {
                 filteredTasks.map((task) => (
                   <tr
                     key={task.id}
-                    className="hover:bg-gray-50 transition-colors"
+                    className="table-row"
                   >
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       <Link
                         to={`/projects/${task.project_id}`}
                         className="text-sm font-semibold text-primary-600 hover:text-primary-700 hover:underline"
@@ -206,15 +208,10 @@ export default function Tasks() {
                         {projects[task.project_id]?.name || `Project ${task.project_id}`}
                       </Link>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-semibold text-gray-900">{task.title}</div>
+                    <td className="table-cell">
+                      <div className="text-sm font-semibold text-gray-900 break-words whitespace-normal">{task.title}</div>
                     </td>
-                    <td className="px-6 py-4">
-                      <div className="text-sm text-gray-600 max-w-md">
-                        {task.description || <span className="text-gray-400 italic">No description</span>}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       <span
                         className={`badge ${
                           task.status === 'completed'
@@ -229,14 +226,14 @@ export default function Tasks() {
                         {task.status?.charAt(0).toUpperCase() + task.status?.slice(1).replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       <div className="text-sm font-semibold text-primary-600">
                         {task.billable_hours !== null && task.billable_hours !== undefined
                           ? `${task.billable_hours.toFixed(2)} hrs`
                           : <span className="text-gray-400">Not set</span>}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="table-cell">
                       {task.is_paid ? (
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
                           <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -253,6 +250,23 @@ export default function Tasks() {
                         </span>
                       )}
                     </td>
+                    <td className="table-cell">
+                      {task.description && (
+                        <button
+                          onClick={() => {
+                            setSelectedTaskDescription({ title: task.title, description: task.description })
+                            setShowDescriptionModal(true)
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
+                          title="View description"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -260,6 +274,39 @@ export default function Tasks() {
           </table>
         </div>
       </div>
+
+      {/* Description View Modal */}
+      {showDescriptionModal && selectedTaskDescription && (
+        <div className="modal-overlay" onClick={() => setShowDescriptionModal(false)}>
+          <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Task Description</h3>
+                <button
+                  onClick={() => setShowDescriptionModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="card-body">
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Task:</h4>
+                <p className="text-lg font-bold text-gray-900">{selectedTaskDescription.title}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Description:</h4>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap break-words leading-relaxed">
+                  {selectedTaskDescription.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

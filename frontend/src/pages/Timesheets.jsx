@@ -9,8 +9,10 @@ export default function Timesheets() {
   const [timesheets, setTimesheets] = useState([])
   const [projects, setProjects] = useState([])
   const [projectsMap, setProjectsMap] = useState({})
+  const [projectsLeadMap, setProjectsLeadMap] = useState({}) // Map of project_id -> is_user_lead
   const [tasks, setTasks] = useState([])
   const [showModal, setShowModal] = useState(false)
+  const [editingTimesheet, setEditingTimesheet] = useState(null)
   const [selectedProject, setSelectedProject] = useState('')
   const [formData, setFormData] = useState({
     project_id: '',
@@ -59,10 +61,13 @@ export default function Timesheets() {
       const response = await api.get('/projects')
       setProjects(response.data)
       const map = {}
+      const leadMap = {}
       response.data.forEach(p => {
         map[p.id] = p.name
+        leadMap[p.id] = p.project_lead_id === user?.id
       })
       setProjectsMap(map)
+      setProjectsLeadMap(leadMap)
     } catch (error) {
       toast.error('Failed to fetch projects')
     }
@@ -87,9 +92,19 @@ export default function Timesheets() {
         hours: parseFloat(formData.hours),
         date: new Date(formData.date).toISOString(),
       }
-      await api.post('/timesheets', payload)
-      toast.success('Timesheet created successfully!')
+      
+      if (editingTimesheet) {
+        // Update existing timesheet
+        await api.put(`/timesheets/${editingTimesheet.id}`, payload)
+        toast.success('Timesheet updated successfully!')
+      } else {
+        // Create new timesheet
+        await api.post('/timesheets', payload)
+        toast.success('Timesheet created successfully!')
+      }
+      
       setShowModal(false)
+      setEditingTimesheet(null)
       setFormData({
         project_id: '',
         task_id: '',
@@ -100,8 +115,59 @@ export default function Timesheets() {
       setSelectedProject('')
       fetchTimesheets()
     } catch (error) {
-      toast.error(error.response?.data?.detail || 'Failed to create timesheet')
+      toast.error(error.response?.data?.detail || `Failed to ${editingTimesheet ? 'update' : 'create'} timesheet`)
     }
+  }
+
+  const handleEdit = (timesheet) => {
+    // Allow editing pending and approved timesheets, but not rejected ones
+    if (timesheet.status === 'rejected') {
+      toast.error('Rejected timesheets cannot be edited')
+      return
+    }
+    
+    // Developers can only edit their own pending timesheets
+    // Project leads can edit both pending and approved timesheets
+    if (user?.role === 'developer') {
+      if (timesheet.status === 'approved') {
+        toast.error('Developers cannot edit approved timesheets. Only project leads can edit approved timesheets.')
+        return
+      }
+      if (timesheet.user_id !== user?.id) {
+        toast.error('You can only edit your own timesheets')
+        return
+      }
+    } else if (user?.role === 'project_lead') {
+      // Project leads can edit any timesheet in their projects
+      // No additional check needed here, backend will validate project ownership
+    } else if (timesheet.user_id !== user?.id) {
+      toast.error('You can only edit your own timesheets')
+      return
+    }
+    
+    setEditingTimesheet(timesheet)
+    setFormData({
+      project_id: timesheet.project_id.toString(),
+      task_id: timesheet.task_id?.toString() || '',
+      date: new Date(timesheet.date).toISOString().split('T')[0],
+      hours: timesheet.hours.toString(),
+      description: timesheet.description || '',
+    })
+    setSelectedProject(timesheet.project_id.toString())
+    setShowModal(true)
+  }
+
+  const handleCancel = () => {
+    setShowModal(false)
+    setEditingTimesheet(null)
+    setFormData({
+      project_id: '',
+      task_id: '',
+      date: new Date().toISOString().split('T')[0],
+      hours: '',
+      description: '',
+    })
+    setSelectedProject('')
   }
 
   const handleValidate = async (timesheetId, approved) => {
@@ -113,6 +179,20 @@ export default function Timesheets() {
       fetchTimesheets()
     } catch (error) {
       toast.error('Failed to validate timesheet')
+    }
+  }
+
+  const handleDelete = async (timesheet) => {
+    if (!window.confirm(`Are you sure you want to delete this timesheet?\n\nDate: ${format(new Date(timesheet.date), 'MMM dd, yyyy')}\nHours: ${timesheet.hours}\nTask: ${timesheet.task?.title || 'N/A'}`)) {
+      return
+    }
+
+    try {
+      await api.delete(`/timesheets/${timesheet.id}`)
+      toast.success('Timesheet deleted successfully')
+      fetchTimesheets()
+    } catch (error) {
+      toast.error(error.response?.data?.detail || 'Failed to delete timesheet')
     }
   }
 
@@ -159,9 +239,7 @@ export default function Timesheets() {
                   <th className="table-header-cell">Hours</th>
                   <th className="table-header-cell">User</th>
                   <th className="table-header-cell">Status</th>
-                  {canValidate && (
-                    <th className="table-header-cell">Actions</th>
-                  )}
+                  <th className="table-header-cell">Actions</th>
                 </tr>
               </thead>
               <tbody className="table-body">
@@ -195,24 +273,56 @@ export default function Timesheets() {
                         {ts.status}
                       </span>
                     </td>
-                    {canValidate && ts.status === 'pending' && (
-                      <td className="table-cell">
-                        <div className="flex items-center space-x-3">
+                    <td className="table-cell">
+                      <div className="flex items-center space-x-2">
+                        {/* Show edit button based on role and status */}
+                        {ts.status === 'pending' && ts.user_id === user?.id && (
                           <button
-                            onClick={() => handleValidate(ts.id, true)}
-                            className="btn btn-success text-sm py-1 px-3"
+                            onClick={() => handleEdit(ts)}
+                            className="btn btn-sm btn-secondary text-xs py-1 px-2"
+                            title="Edit timesheet"
                           >
-                            Approve
+                            Edit
                           </button>
+                        )}
+                        {/* Project leads can edit both pending and approved timesheets */}
+                        {(ts.status === 'pending' || ts.status === 'approved') && user?.role === 'project_lead' && (
                           <button
-                            onClick={() => handleValidate(ts.id, false)}
-                            className="btn btn-danger text-sm py-1 px-3"
+                            onClick={() => handleEdit(ts)}
+                            className="btn btn-sm btn-secondary text-xs py-1 px-2"
+                            title={ts.status === 'approved' ? 'Edit approved timesheet (Project Lead only)' : 'Edit timesheet'}
                           >
-                            Reject
+                            Edit
                           </button>
-                        </div>
-                      </td>
-                    )}
+                        )}
+                        {canValidate && ts.status === 'pending' && (
+                          <>
+                            <button
+                              onClick={() => handleValidate(ts.id, true)}
+                              className="btn btn-sm btn-success text-xs py-1 px-2"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => handleValidate(ts.id, false)}
+                              className="btn btn-sm btn-danger text-xs py-1 px-2"
+                            >
+                              Reject
+                            </button>
+                          </>
+                        )}
+                        {/* Project leads can delete any timesheet in their projects */}
+                        {(user?.role === 'project_lead' || projectsLeadMap[ts.project_id]) && (
+                          <button
+                            onClick={() => handleDelete(ts)}
+                            className="btn btn-sm btn-danger text-xs py-1 px-2"
+                            title="Delete timesheet (Project Lead only)"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -224,7 +334,9 @@ export default function Timesheets() {
       {showModal && (
         <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
           <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
-            <h3 className="text-lg font-medium mb-4">Create Timesheet</h3>
+            <h3 className="text-lg font-medium mb-4">
+              {editingTimesheet ? 'Edit Timesheet' : 'Create Timesheet'}
+            </h3>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">
@@ -313,7 +425,7 @@ export default function Timesheets() {
               <div className="flex justify-end space-x-3">
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={handleCancel}
                   className="px-4 py-2 bg-gray-200 rounded-md"
                 >
                   Cancel
@@ -322,7 +434,7 @@ export default function Timesheets() {
                   type="submit"
                   className="px-4 py-2 bg-primary-600 text-white rounded-md"
                 >
-                  Create
+                  {editingTimesheet ? 'Update' : 'Create'}
                 </button>
               </div>
             </form>

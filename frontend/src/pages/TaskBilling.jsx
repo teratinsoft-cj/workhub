@@ -11,6 +11,8 @@ export default function TaskBilling() {
   const [projects, setProjects] = useState({}) // project_id -> project object
   const [selectedTasks, setSelectedTasks] = useState([])
   const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false)
+  const [selectedTaskDescription, setSelectedTaskDescription] = useState(null)
   const [loading, setLoading] = useState(true)
   const [filterProject, setFilterProject] = useState('all')
   const [filterStatus, setFilterStatus] = useState('all')
@@ -220,10 +222,10 @@ export default function TaskBilling() {
                 </th>
                 <th className="table-header-cell">Project</th>
                 <th className="table-header-cell">Task</th>
-                <th className="table-header-cell">Description</th>
                 <th className="table-header-cell">Status</th>
                 <th className="table-header-cell">Billable Hours</th>
                 <th className="table-header-cell">Billing Status</th>
+                <th className="table-header-cell w-20">Actions</th>
               </tr>
             </thead>
             <tbody className="table-body">
@@ -266,11 +268,6 @@ export default function TaskBilling() {
                       <div className="text-sm font-semibold text-gray-900">{task.title}</div>
                     </td>
                     <td className="table-cell">
-                      <div className="text-sm text-gray-600 max-w-md">
-                        {task.description || <span className="text-gray-400 italic">No description</span>}
-                      </div>
-                    </td>
-                    <td className="table-cell">
                       <span
                         className={`badge ${
                           task.status === 'completed'
@@ -309,6 +306,23 @@ export default function TaskBilling() {
                         </span>
                       )}
                     </td>
+                    <td className="table-cell">
+                      {task.description && (
+                        <button
+                          onClick={() => {
+                            setSelectedTaskDescription({ title: task.title, description: task.description })
+                            setShowDescriptionModal(true)
+                          }}
+                          className="p-1.5 text-gray-400 hover:text-primary-600 hover:bg-primary-50 rounded-lg transition-all duration-200"
+                          title="View description"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))
               )}
@@ -316,6 +330,39 @@ export default function TaskBilling() {
           </table>
         </div>
       </div>
+
+      {/* Description View Modal */}
+      {showDescriptionModal && selectedTaskDescription && (
+        <div className="modal-overlay" onClick={() => setShowDescriptionModal(false)}>
+          <div className="modal-content max-w-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="card-header">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900">Task Description</h3>
+                <button
+                  onClick={() => setShowDescriptionModal(false)}
+                  className="text-gray-400 hover:text-gray-600 transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="card-body">
+              <div className="mb-4">
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Task:</h4>
+                <p className="text-lg font-bold text-gray-900">{selectedTaskDescription.title}</p>
+              </div>
+              <div>
+                <h4 className="text-sm font-semibold text-gray-700 mb-2">Description:</h4>
+                <p className="text-sm text-gray-600 whitespace-pre-wrap break-words leading-relaxed">
+                  {selectedTaskDescription.description}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Invoice Modal */}
       {showInvoiceModal && selectedTasksData.length > 0 && (

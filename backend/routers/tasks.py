@@ -95,6 +95,7 @@ def get_project_tasks(
             "estimation_hours": task.estimation_hours,
             "billable_hours": task.billable_hours,
             "productivity_hours": task.productivity_hours,
+            "track_summary": task.track_summary,
             "cumulative_worked_hours": float(cumulative_hours),
             "assigned_developer_ids": assigned_developer_ids,
             "is_paid": is_paid,
@@ -205,6 +206,7 @@ def update_task(
         "estimation_hours": db_task.estimation_hours,
         "billable_hours": db_task.billable_hours,
         "productivity_hours": db_task.productivity_hours,
+        "track_summary": db_task.track_summary,
         "cumulative_worked_hours": float(cumulative_hours),
         "assigned_developer_ids": assigned_developer_ids,
         "created_at": db_task.created_at,
@@ -231,10 +233,23 @@ def update_task_hours(
     # Update billable_hours if provided
     if hours_update.billable_hours is not None:
         db_task.billable_hours = hours_update.billable_hours
+        # Auto-copy title and description to track_summary if track_summary is not provided
+        if hours_update.track_summary is None and db_task.track_summary is None:
+            summary_parts = []
+            if db_task.title:
+                summary_parts.append(db_task.title)
+            if db_task.description:
+                summary_parts.append(db_task.description)
+            if summary_parts:
+                db_task.track_summary = "\n\n".join(summary_parts)
     
     # Update productivity_hours if provided
     if hours_update.productivity_hours is not None:
         db_task.productivity_hours = hours_update.productivity_hours
+    
+    # Update track_summary if provided
+    if hours_update.track_summary is not None:
+        db_task.track_summary = hours_update.track_summary
     
     db.commit()
     db.refresh(db_task)
@@ -267,6 +282,7 @@ def update_task_hours(
         "estimation_hours": db_task.estimation_hours,
         "billable_hours": db_task.billable_hours,
         "productivity_hours": db_task.productivity_hours,
+        "track_summary": db_task.track_summary,
         "cumulative_worked_hours": float(cumulative_hours),
         "assigned_developer_ids": assigned_developer_ids,
         "is_paid": is_paid,
@@ -330,6 +346,7 @@ def get_lead_all_tasks(
             "estimation_hours": task.estimation_hours,
             "billable_hours": task.billable_hours,
             "productivity_hours": task.productivity_hours,
+            "track_summary": task.track_summary,
             "cumulative_worked_hours": float(cumulative_hours),
             "assigned_developer_ids": assigned_developer_ids,
             "is_paid": is_paid,
@@ -395,6 +412,7 @@ def get_owner_all_tasks(
             "estimation_hours": task.estimation_hours,
             "billable_hours": task.billable_hours,
             "productivity_hours": task.productivity_hours,
+            "track_summary": task.track_summary,
             "cumulative_worked_hours": float(cumulative_hours),
             "assigned_developer_ids": assigned_developer_ids,
             "is_paid": is_paid,
@@ -497,7 +515,7 @@ def assign_developer_to_task(
     if not dev_project:
         raise HTTPException(status_code=400, detail="Developer must be assigned to the project first")
     
-    # Check if already assigned
+    # Check if already assigned to this specific developer
     existing = db.query(TaskDeveloper).filter(
         TaskDeveloper.task_id == task_id,
         TaskDeveloper.developer_id == developer_id
@@ -505,7 +523,14 @@ def assign_developer_to_task(
     if existing:
         raise HTTPException(status_code=400, detail="Developer already assigned to this task")
     
-    # Create assignment
+    # Remove any existing developer assignments for this task (single developer per task)
+    existing_assignments = db.query(TaskDeveloper).filter(
+        TaskDeveloper.task_id == task_id
+    ).all()
+    for assignment in existing_assignments:
+        db.delete(assignment)
+    
+    # Create new assignment
     task_developer = TaskDeveloper(
         task_id=task_id,
         developer_id=developer_id
@@ -607,6 +632,7 @@ def update_task_status(
         "estimation_hours": db_task.estimation_hours,
         "billable_hours": db_task.billable_hours,
         "productivity_hours": db_task.productivity_hours,
+        "track_summary": db_task.track_summary,
         "cumulative_worked_hours": float(cumulative_hours),
         "assigned_developer_ids": assigned_developer_ids,
         "is_paid": is_paid,
