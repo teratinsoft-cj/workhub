@@ -975,8 +975,8 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div className="flex-1">
                     <p className="text-sm font-medium text-gray-600 mb-1">Pending Invoices</p>
-                    <p className="text-3xl font-bold text-orange-600">{stats.invoices.pending}</p>
-                    <p className="text-xs text-gray-500 mt-1">₹{stats.invoices.pending_amount.toFixed(2)}</p>
+                    <p className="text-3xl font-bold text-orange-600">₹{stats.invoices.pending_amount.toFixed(2)}</p>
+                    <p className="text-xs text-gray-500 mt-1">{stats.invoices.pending} pending</p>
                   </div>
                   <div className="stat-card-icon bg-orange-100 text-orange-600 group-hover:scale-110 transition-transform">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

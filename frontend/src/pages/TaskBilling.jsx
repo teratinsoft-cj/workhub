@@ -391,8 +391,6 @@ function InvoiceModal({ selectedTasks, projects, onClose, onSuccess }) {
     invoice_amount: '',
     invoice_date: new Date().toISOString().split('T')[0],
     notes: '',
-    date_range_start: '',
-    date_range_end: '',
   })
   const [loading, setLoading] = useState(false)
 
@@ -434,12 +432,6 @@ function InvoiceModal({ selectedTasks, projects, onClose, onSuccess }) {
         invoice_amount: parseFloat(formData.invoice_amount),
         invoice_date: new Date(formData.invoice_date).toISOString(),
         notes: formData.notes,
-        date_range_start: formData.date_range_start
-          ? new Date(formData.date_range_start).toISOString()
-          : null,
-        date_range_end: formData.date_range_end
-          ? new Date(formData.date_range_end).toISOString()
-          : null,
         task_ids: projectTasks.map(t => t.id),
       }
       await api.post('/payments/invoices', payload)
@@ -623,31 +615,6 @@ function InvoiceModal({ selectedTasks, projects, onClose, onSuccess }) {
                 value={formData.invoice_date}
                 onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
               />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date Range Start
-                </label>
-                <input
-                  type="date"
-                  className="input"
-                  value={formData.date_range_start}
-                  onChange={(e) => setFormData({ ...formData, date_range_start: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  Date Range End
-                </label>
-                <input
-                  type="date"
-                  className="input"
-                  value={formData.date_range_end}
-                  onChange={(e) => setFormData({ ...formData, date_range_end: e.target.value })}
-                />
-              </div>
             </div>
 
             <div>

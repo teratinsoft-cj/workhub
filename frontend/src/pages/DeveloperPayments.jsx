@@ -13,6 +13,8 @@ export default function DeveloperPayments() {
   const [filterProject, setFilterProject] = useState('all')
   const [filterDeveloper, setFilterDeveloper] = useState('all')
   const [selectedTasks, setSelectedTasks] = useState([])
+  const [showVoucherModal, setShowVoucherModal] = useState(false)
+  const [voucherModalData, setVoucherModalData] = useState(null)
 
   // Redirect if not project lead or super admin
   useEffect(() => {
@@ -78,7 +80,7 @@ export default function DeveloperPayments() {
     }
   }
 
-  const handleCreateVoucher = async (developer, selectedUnpaidTasks) => {
+  const handleCreateVoucher = (developer, selectedUnpaidTasks) => {
     if (selectedUnpaidTasks.length === 0) {
       toast.error('Please select at least one task to create a payment voucher')
       return
@@ -110,20 +112,33 @@ export default function DeveloperPayments() {
     
     const totalAmount = projectData.tasks.reduce((sum, task) => sum + task.earnings, 0)
     
+    // Show modal with voucher details
+    setVoucherModalData({
+      developer: developer,
+      projectData: projectData,
+      selectedTasks: projectData.tasks,
+      totalAmount: totalAmount
+    })
+    setShowVoucherModal(true)
+  }
+
+  const handleVoucherSubmit = async (formData) => {
     try {
       setLoading(true)
       const payload = {
-        developer_id: developer.developer_id,
-        project_id: projectData.project_id,
-        voucher_amount: totalAmount,
-        voucher_date: new Date().toISOString(),
-        notes: `Payment voucher for ${projectData.tasks.length} task(s)`,
-        task_ids: projectData.tasks.map(t => t.id)
+        developer_id: voucherModalData.developer.developer_id,
+        project_id: voucherModalData.projectData.project_id,
+        voucher_amount: parseFloat(formData.voucher_amount),
+        voucher_date: new Date(formData.voucher_date).toISOString(),
+        notes: formData.notes || `Payment voucher for ${voucherModalData.selectedTasks.length} task(s)`,
+        task_ids: voucherModalData.selectedTasks.map(t => t.id)
       }
       
       await api.post('/developer-payments/vouchers', payload)
       toast.success('Payment voucher created successfully!')
       setSelectedTasks([])
+      setShowVoucherModal(false)
+      setVoucherModalData(null)
       fetchWorkSummary()
     } catch (error) {
       console.error('Error creating voucher:', error)
@@ -512,6 +527,190 @@ export default function DeveloperPayments() {
         </div>
       )}
 
+      {/* Voucher Creation Modal */}
+      {showVoucherModal && voucherModalData && (
+        <VoucherModal
+          developer={voucherModalData.developer}
+          projectData={voucherModalData.projectData}
+          selectedTasks={voucherModalData.selectedTasks}
+          totalAmount={voucherModalData.totalAmount}
+          onClose={() => {
+            setShowVoucherModal(false)
+            setVoucherModalData(null)
+          }}
+          onSubmit={handleVoucherSubmit}
+          loading={loading}
+        />
+      )}
+
+    </div>
+  )
+}
+
+// Voucher Modal Component
+function VoucherModal({ developer, projectData, selectedTasks, totalAmount, onClose, onSubmit, loading }) {
+  const [formData, setFormData] = useState({
+    voucher_amount: totalAmount.toFixed(2),
+    voucher_date: new Date().toISOString().split('T')[0],
+    notes: `Payment voucher for ${selectedTasks.length} task(s)`,
+  })
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    onSubmit(formData)
+  }
+
+  // Calculate total productivity hours
+  const totalHours = selectedTasks.reduce((sum, task) => sum + (task.productivity_hours || 0), 0)
+  const hourlyRate = selectedTasks.length > 0 ? selectedTasks[0].hourly_rate : 0
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-content max-w-4xl" onClick={(e) => e.stopPropagation()}>
+        <div className="card-header">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-bold text-gray-900">Create Payment Voucher</h3>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div className="card-body">
+          {/* Developer and Project Info */}
+          <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <p className="text-gray-500">Developer</p>
+                <p className="font-semibold text-gray-900">{developer.developer_name}</p>
+              </div>
+              <div>
+                <p className="text-gray-500">Project</p>
+                <p className="font-semibold text-gray-900">{projectData.project_name}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Selected Tasks Table */}
+          <div className="mb-6">
+            <h4 className="text-sm font-bold text-gray-700 mb-3">
+              Selected Tasks ({selectedTasks.length}):
+            </h4>
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <table className="w-full text-sm">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-semibold text-gray-700">Task</th>
+                    <th className="px-4 py-2 text-right font-semibold text-gray-700">Productivity Hours</th>
+                    <th className="px-4 py-2 text-right font-semibold text-gray-700">Rate</th>
+                    <th className="px-4 py-2 text-right font-semibold text-gray-700">Amount</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {selectedTasks.map((task) => (
+                    <tr key={task.id}>
+                      <td className="px-4 py-2">
+                        <div className="font-medium text-gray-900">{task.title}</div>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {task.productivity_hours.toFixed(2)} hrs
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        ₹{task.hourly_rate.toFixed(2)}/hr
+                      </td>
+                      <td className="px-4 py-2 text-right font-semibold text-primary-600">
+                        ₹{task.earnings.toFixed(2)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                  <tr>
+                    <td colSpan="2" className="px-4 py-3 text-right font-bold text-gray-700">
+                      Total:
+                    </td>
+                    <td className="px-4 py-3 text-right font-semibold text-gray-700">
+                      {totalHours.toFixed(2)} hrs × ₹{hourlyRate.toFixed(2)}/hr
+                    </td>
+                    <td className="px-4 py-3 text-right font-bold text-primary-600">
+                      ₹{totalAmount.toFixed(2)}
+                    </td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Voucher Amount (₹) *
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                required
+                className="input bg-gray-50"
+                value={formData.voucher_amount}
+                readOnly
+                placeholder="Calculated automatically"
+              />
+              <p className="mt-1 text-xs text-gray-500">
+                Calculated: {totalHours.toFixed(2)} hrs × ₹{hourlyRate.toFixed(2)}/hr = ₹{totalAmount.toFixed(2)}
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Voucher Date *
+              </label>
+              <input
+                type="date"
+                required
+                className="input"
+                value={formData.voucher_date}
+                onChange={(e) => setFormData({ ...formData, voucher_date: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Notes
+              </label>
+              <textarea
+                rows={3}
+                className="input"
+                value={formData.notes}
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                placeholder="Additional notes about this voucher..."
+              />
+            </div>
+
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <button
+                type="button"
+                onClick={onClose}
+                className="btn btn-secondary"
+                disabled={loading}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={loading}
+              >
+                {loading ? 'Creating...' : 'Create Voucher'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
     </div>
   )
 }
