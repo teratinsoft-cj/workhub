@@ -426,10 +426,11 @@ export default function Dashboard() {
       }
 
       // Calculate invoice statistics
+      // Note: Partial payments are now treated as pending
       const invoiceStats = {
         total: invoices.length,
         pending: invoices.filter((inv) => inv.status === 'pending').length,
-        partial: invoices.filter((inv) => inv.status === 'partial').length,
+        partial: 0, // Partial status removed, all treated as pending
         paid: invoices.filter((inv) => inv.status === 'paid').length,
         total_amount: invoices.reduce((sum, inv) => sum + (inv.invoice_amount || 0), 0),
         total_paid: invoices.reduce((sum, inv) => sum + (inv.total_paid || 0), 0),
@@ -1082,8 +1083,6 @@ export default function Dashboard() {
                           switch (status) {
                             case 'paid':
                               return 'bg-green-100 text-green-800'
-                            case 'partial':
-                              return 'bg-yellow-100 text-yellow-800'
                             default:
                               return 'bg-gray-100 text-gray-800'
                           }

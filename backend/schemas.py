@@ -203,7 +203,7 @@ class InvoiceResponse(InvoiceBase):
     created_at: datetime
     created_by: int
     total_paid: Optional[float] = 0.0
-    status: Optional[str] = "pending"  # Calculated: pending, partial, paid
+    status: Optional[str] = "pending"  # Calculated: pending, paid (partial payments treated as pending)
     
     class Config:
         from_attributes = True

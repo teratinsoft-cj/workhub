@@ -70,7 +70,8 @@ def create_invoice(
         Payment.invoice_id == db_invoice.id
     ).scalar() or 0.0
     
-    status = "paid" if total_paid >= db_invoice.invoice_amount else ("partial" if total_paid > 0 else "pending")
+    # Treat partial payments as pending (partial status removed)
+    status = "paid" if total_paid >= db_invoice.invoice_amount else "pending"
     
     return InvoiceResponse(
         id=db_invoice.id,
@@ -121,7 +122,8 @@ def get_invoices(
             Payment.invoice_id == invoice.id
         ).scalar() or 0.0
         
-        status = "paid" if total_paid >= invoice.invoice_amount else ("partial" if total_paid > 0 else "pending")
+        # Treat partial payments as pending (partial status removed)
+        status = "paid" if total_paid >= invoice.invoice_amount else "pending"
         
         result.append(InvoiceResponse(
             id=invoice.id,
@@ -166,7 +168,8 @@ def get_invoice(
         Payment.invoice_id == invoice.id
     ).scalar() or 0.0
     
-    status = "paid" if total_paid >= invoice.invoice_amount else ("partial" if total_paid > 0 else "pending")
+    # Treat partial payments as pending (partial status removed)
+    status = "paid" if total_paid >= invoice.invoice_amount else "pending"
     
     return InvoiceResponse(
         id=invoice.id,

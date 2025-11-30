@@ -530,8 +530,6 @@ export default function Payments() {
     switch (status) {
       case 'paid':
         return 'bg-green-100 text-green-800'
-      case 'partial':
-        return 'bg-yellow-100 text-yellow-800'
       default:
         return 'bg-gray-100 text-gray-800'
     }
@@ -572,7 +570,6 @@ export default function Payments() {
           className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
         >
           <option value="pending">Pending</option>
-          <option value="partial">Partial</option>
           <option value="paid">Paid</option>
           <option value="all">All</option>
         </select>
@@ -630,7 +627,12 @@ export default function Payments() {
                         </div>
                         <div>
                           <p className="text-gray-500">Total Paid</p>
-                          <p className="font-medium">₹{invoice.total_paid.toFixed(2)}</p>
+                          <p className="font-medium">
+                            ₹{invoice.total_paid.toFixed(2)}
+                            {invoice.total_paid > 0 && invoice.status === 'pending' && (
+                              <span className="ml-2 text-xs text-blue-600 font-normal">(Partial)</span>
+                            )}
+                          </p>
                         </div>
                         <div>
                           <p className="text-gray-500">Remaining</p>
