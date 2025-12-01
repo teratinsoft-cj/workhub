@@ -325,3 +325,38 @@ class DeveloperWorkSummary(BaseModel):
     pending_amount: float
     tasks: List[dict] = []  # List of tasks with productivity hours
 
+# Accounting Schemas
+class AccountingEntryBase(BaseModel):
+    transaction_date: datetime
+    transaction_type: str
+    account_type: str
+    entry_type: str  # debit or credit
+    amount: float
+    description: Optional[str] = None
+    reference_number: Optional[str] = None
+
+class AccountingEntryResponse(AccountingEntryBase):
+    id: int
+    invoice_id: Optional[int] = None
+    payment_id: Optional[int] = None
+    voucher_id: Optional[int] = None
+    developer_payment_id: Optional[int] = None
+    project_id: Optional[int] = None
+    created_by: int
+    created_at: datetime
+    
+    class Config:
+        from_attributes = True
+
+class AccountingSummary(BaseModel):
+    total_debits: float
+    total_credits: float
+    balance: float  # credits - debits
+    accounts_receivable: float  # Outstanding invoices
+    accounts_payable: float  # Outstanding vouchers
+    cash_in: float  # Total payments received
+    cash_out: float  # Total payments made
+    total_revenue: float  # Total revenue earned
+    total_expenses: float  # Total expenses incurred
+    profit_loss: float  # Profit (positive) or Loss (negative)
+

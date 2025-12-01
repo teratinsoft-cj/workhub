@@ -18,6 +18,7 @@ import TaskBilling from './pages/TaskBilling'
 import Tasks from './pages/Tasks'
 import DeveloperPayments from './pages/DeveloperPayments'
 import PaymentVouchers from './pages/PaymentVouchers'
+import Accounting from './pages/Accounting'
 import Layout from './components/Layout'
 
 function PrivateRoute({ children }) {
@@ -155,6 +156,16 @@ function AppRoutes() {
           <PrivateRoute>
             <Layout>
               <PaymentVouchers />
+            </Layout>
+          </PrivateRoute>
+        }
+      />
+      <Route
+        path="/accounting"
+        element={
+          <PrivateRoute>
+            <Layout>
+              <Accounting />
             </Layout>
           </PrivateRoute>
         }

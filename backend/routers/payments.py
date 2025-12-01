@@ -9,6 +9,7 @@ from database import get_db
 from models import User, Invoice, Payment, Project, InvoiceTask, Task, DeveloperPayment, DeveloperProject, TaskDeveloper, PaymentVoucher, PaymentVoucherTask, Timesheet
 from schemas import InvoiceCreate, InvoiceResponse, PaymentCreate, PaymentResponse, DeveloperEarnings, PaymentHistoryItem, TaskResponse
 from auth import get_current_active_user, require_role, can_act_as_developer
+from routers.accounting import record_invoice_created, record_invoice_payment
 
 router = APIRouter()
 
@@ -64,6 +65,18 @@ def create_invoice(
     
     db.commit()
     db.refresh(db_invoice)
+    
+    # Record accounting entry for invoice creation
+    try:
+        # Refresh to ensure all relationships are available
+        db.refresh(db_invoice)
+        record_invoice_created(db, db_invoice, current_user.id)
+        db.commit()
+    except Exception as e:
+        # Log error but don't fail invoice creation
+        import traceback
+        print(f"Error recording accounting entry for invoice {db_invoice.id}: {e}")
+        traceback.print_exc()
     
     # Calculate status
     total_paid = db.query(func.coalesce(func.sum(Payment.amount), 0)).filter(
@@ -294,6 +307,18 @@ def create_payment(
     db.add(db_payment)
     db.commit()
     db.refresh(db_payment)
+    
+    # Record accounting entry for payment
+    try:
+        # Refresh invoice to ensure all relationships are available
+        db.refresh(invoice)
+        record_invoice_payment(db, db_payment, invoice, current_user.id)
+        db.commit()
+    except Exception as e:
+        # Log error but don't fail payment creation
+        import traceback
+        print(f"Error recording accounting entry for payment {db_payment.id}: {e}")
+        traceback.print_exc()
     
     return db_payment
 

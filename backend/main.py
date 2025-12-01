@@ -8,7 +8,7 @@ import os
 
 from database import engine, get_db
 from models import Base
-from routers import auth, projects, developers, tasks, timesheets, payments, project_sources, developer_payments, ai
+from routers import auth, projects, developers, tasks, timesheets, payments, project_sources, developer_payments, ai, accounting
 
 # Database migrations are handled by Alembic
 # Run migrations with: alembic upgrade head
@@ -66,6 +66,7 @@ app.include_router(payments.router, prefix="/api/payments", tags=["Payments"])
 app.include_router(project_sources.router, prefix="/api/project-sources", tags=["Project Sources"])
 app.include_router(developer_payments.router, prefix="/api/developer-payments", tags=["Developer Payments"])
 app.include_router(ai.router, prefix="/api/ai", tags=["AI"])
+app.include_router(accounting.router, prefix="/api/accounting", tags=["Accounting"])
 
 @app.get("/")
 def root():

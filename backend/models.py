@@ -279,6 +279,49 @@ class DeveloperPayment(Base):
     created_by_user = relationship("User", foreign_keys=[created_by])
     payment_tasks = relationship("DeveloperPaymentTask", back_populates="payment", cascade="all, delete-orphan")
 
+class TransactionType(str, enum.Enum):
+    """Types of accounting transactions"""
+    INVOICE_CREATED = "invoice_created"  # Credit: Accounts Receivable
+    INVOICE_PAYMENT = "invoice_payment"  # Credit: Cash/Bank, Debit: Accounts Receivable
+    VOUCHER_CREATED = "voucher_created"  # Debit: Accounts Payable
+    VOUCHER_PAYMENT = "voucher_payment"  # Debit: Cash/Bank, Credit: Accounts Payable
+
+class AccountingEntry(Base):
+    """Double-entry accounting ledger entries"""
+    __tablename__ = "accounting_entries"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    transaction_date = Column(DateTime(timezone=True), nullable=False)
+    transaction_type = Column(String, nullable=False)  # invoice_created, invoice_payment, voucher_created, voucher_payment
+    
+    # Reference to source transaction
+    invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=True)
+    payment_id = Column(Integer, ForeignKey("payments.id"), nullable=True)
+    voucher_id = Column(Integer, ForeignKey("payment_vouchers.id"), nullable=True)
+    developer_payment_id = Column(Integer, ForeignKey("developer_payments.id"), nullable=True)
+    
+    # Account information
+    account_type = Column(String, nullable=False)  # accounts_receivable, accounts_payable, cash, bank, revenue, expense
+    entry_type = Column(String, nullable=False)  # debit or credit
+    amount = Column(Float, nullable=False)
+    
+    # Description and reference
+    description = Column(Text, nullable=True)
+    reference_number = Column(String, nullable=True)  # Invoice #, Voucher #, etc.
+    
+    # Project and user context
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    # Relationships
+    invoice = relationship("Invoice", foreign_keys=[invoice_id])
+    payment = relationship("Payment", foreign_keys=[payment_id])
+    voucher = relationship("PaymentVoucher", foreign_keys=[voucher_id])
+    developer_payment = relationship("DeveloperPayment", foreign_keys=[developer_payment_id])
+    project = relationship("Project", foreign_keys=[project_id])
+    created_by_user = relationship("User", foreign_keys=[created_by])
+
 class DeveloperPaymentTask(Base):
     """Link tasks to developer payments"""
     __tablename__ = "developer_payment_tasks"

@@ -90,6 +90,11 @@ export default function Layout({ children }) {
     
     // Invoices - visible to all non-developer roles
     financeMenuItems.push({ path: '/payments', label: 'Invoices', icon: '💰' })
+    
+    // Accounting - only for project leads and super admins
+    if (user?.role === 'project_lead' || user?.role === 'super_admin') {
+      financeMenuItems.push({ path: '/accounting', label: 'Accounting', icon: '📊' })
+    }
 
     // Super admin can see users and project sources under Administration menu
     if (user?.role === 'super_admin') {

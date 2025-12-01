@@ -12,6 +12,7 @@ from schemas import (
     DeveloperPaymentCreate, DeveloperPaymentResponse,
     DeveloperWorkSummary, PaymentVoucherCreate, PaymentVoucherResponse
 )
+from routers.accounting import record_voucher_created, record_voucher_payment
 from auth import get_current_active_user, require_role, has_super_admin_access
 
 router = APIRouter()
@@ -109,6 +110,18 @@ def create_payment_voucher(
     
     db.commit()
     db.refresh(db_voucher)
+    
+    # Record accounting entry for voucher creation
+    try:
+        # Refresh to ensure all relationships are available
+        db.refresh(db_voucher)
+        record_voucher_created(db, db_voucher, current_user.id)
+        db.commit()
+    except Exception as e:
+        # Log error but don't fail voucher creation
+        import traceback
+        print(f"Error recording accounting entry for voucher {db_voucher.id}: {e}")
+        traceback.print_exc()
     
     # Calculate total paid and status
     total_paid = db.query(func.coalesce(func.sum(DeveloperPayment.payment_amount), 0)).filter(
@@ -526,6 +539,18 @@ def pay_developer(
     
     db.commit()
     db.refresh(db_payment)
+    
+    # Record accounting entry for voucher payment
+    try:
+        # Refresh to ensure all relationships are available
+        db.refresh(voucher)
+        record_voucher_payment(db, db_payment, voucher, current_user.id)
+        db.commit()
+    except Exception as e:
+        # Log error but don't fail payment creation
+        import traceback
+        print(f"Error recording accounting entry for developer payment {db_payment.id}: {e}")
+        traceback.print_exc()
     
     # Build response
     developer = db_payment.developer
